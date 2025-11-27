@@ -48,14 +48,27 @@
     <None Include="README.md" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <!-- Post-Build Event: Kopiere DLL nach bin\ für PS-Scripts -->
+  <!-- Post-Build Event: Kopiere DLL nach bin\ und C:\Local\Files -->
   <PropertyGroup>
     <PostBuildEvent>
-      echo Kopiere DLL nach bin\...
+      echo === Post-Build: Kopiere DLL ===
+
+      REM Lokales bin\ Verzeichnis
       if not exist "$(ProjectDir)bin\" mkdir "$(ProjectDir)bin\"
       copy /Y "$(TargetPath)" "$(ProjectDir)bin\"
       copy /Y "$(TargetDir)$(TargetName).pdb" "$(ProjectDir)bin\" 2&gt;nul
-      echo Build erfolgreich: $(ProjectDir)bin\$(TargetFileName)
+      echo ✓ Kopiert nach: $(ProjectDir)bin\$(TargetFileName)
+
+      REM C:\Local\Files Verzeichnis (für portable Deployment)
+      if not exist "C:\Local\Files\" mkdir "C:\Local\Files\"
+      copy /Y "$(TargetPath)" "C:\Local\Files\"
+      if %errorlevel% equ 0 (
+        echo ✓ Kopiert nach: C:\Local\Files\$(TargetFileName)
+      ) else (
+        echo ✗ FEHLER beim Kopieren nach C:\Local\Files (Admin-Rechte erforderlich?)
+      )
+
+      echo === Build erfolgreich ===
     </PostBuildEvent>
   </PropertyGroup>
 </Project>
