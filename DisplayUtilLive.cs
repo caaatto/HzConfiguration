@@ -3,9 +3,9 @@ using System.Runtime.InteropServices;
 using System.Collections.Generic;
 
 /// <summary>
-/// DisplayUtilLive: Setzt die Bildwiederholfrequenz für alle aktiven Monitore
-/// Kompilieren als DLL: csc /target:library /out:DisplayUtilLive.dll DisplayUtilLive.cs
-/// oder in Visual Studio als Class Library (.NET Framework 4.7+)
+/// DisplayUtilLive: Sets the refresh rate for all active monitors
+/// Compile as DLL: csc /target:library /out:DisplayUtilLive.dll DisplayUtilLive.cs
+/// or in Visual Studio as Class Library (.NET Framework 4.0+)
 /// </summary>
 public static class DisplayUtilLive
 {
@@ -110,27 +110,27 @@ public static class DisplayUtilLive
     #endregion
 
     /// <summary>
-    /// Setzt die Bildwiederholfrequenz für alle aktiven Monitore auf den angegebenen Wert
+    /// Sets the refresh rate for all active monitors to the specified value
     /// </summary>
-    /// <param name="hz">Gewünschte Frequenz in Hertz (z.B. 60, 120, 144)</param>
-    public static void SetGPUMonitorsTo(int hz)
+    /// <param name="hz">Desired frequency in Hertz (e.g. 60, 120, 144)</param>
+    public static void SetAllMonitorsTo(int hz)
     {
         if (hz <= 0 || hz > 500)
         {
-            throw new ArgumentException(string.Format("Ungültige Frequenz: {0} Hz. Erlaubt: 1-500 Hz.", hz));
+            throw new ArgumentException(string.Format("Invalid frequency: {0} Hz. Allowed: 1-500 Hz.", hz));
         }
 
         List<string> results = new List<string>();
         List<string> errors = new List<string>();
 
-        // Alle Display-Devices durchlaufen
+        // Enumerate all display devices
         uint deviceIndex = 0;
         DISPLAY_DEVICE device = new DISPLAY_DEVICE();
         device.cb = Marshal.SizeOf(device);
 
         while (EnumDisplayDevices(null, deviceIndex, ref device, 0))
         {
-            // Nur aktive, angeschlossene Displays
+            // Only active, attached displays
             if ((device.StateFlags & DISPLAY_DEVICE_ACTIVE) != 0 &&
                 (device.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) != 0)
             {
@@ -158,9 +158,9 @@ public static class DisplayUtilLive
             device.cb = Marshal.SizeOf(device);
         }
 
-        // Ausgabe
-        Console.WriteLine(string.Format("\n=== SetGPUMonitorsTo({0} Hz) ===", hz));
-        Console.WriteLine(string.Format("Erfolgreiche Änderungen: {0}", results.Count));
+        // Output
+        Console.WriteLine(string.Format("\n=== SetAllMonitorsTo({0} Hz) ===", hz));
+        Console.WriteLine(string.Format("Successful changes: {0}", results.Count));
         foreach (var r in results)
         {
             Console.WriteLine(r);
@@ -168,43 +168,43 @@ public static class DisplayUtilLive
 
         if (errors.Count > 0)
         {
-            Console.WriteLine(string.Format("\nFehler: {0}", errors.Count));
+            Console.WriteLine(string.Format("\nErrors: {0}", errors.Count));
             foreach (var e in errors)
             {
                 Console.WriteLine(e);
             }
-            throw new InvalidOperationException(string.Format("{0} Monitor(e) konnten nicht geändert werden.", errors.Count));
+            throw new InvalidOperationException(string.Format("{0} monitor(s) could not be changed.", errors.Count));
         }
     }
 
     /// <summary>
-    /// Setzt die Bildwiederholfrequenz für einen spezifischen Monitor
+    /// Sets the refresh rate for a specific monitor
     /// </summary>
     private static bool SetMonitorRefreshRate(string deviceName, int hz, out string message)
     {
         DEVMODE currentMode = new DEVMODE();
         currentMode.dmSize = (short)Marshal.SizeOf(currentMode);
 
-        // Aktuelle Einstellungen abrufen
+        // Get current settings
         if (!EnumDisplaySettings(deviceName, ENUM_CURRENT_SETTINGS, ref currentMode))
         {
-            message = "EnumDisplaySettings fehlgeschlagen";
+            message = "EnumDisplaySettings failed";
             return false;
         }
 
-        // Prüfen ob die gewünschte Frequenz bereits gesetzt ist
+        // Check if desired frequency is already set
         if (currentMode.dmDisplayFrequency == hz)
         {
-            message = string.Format("bereits auf {0} Hz (keine Änderung nötig)", hz);
+            message = string.Format("already at {0} Hz (no change needed)", hz);
             return true;
         }
 
-        // Neue Frequenz setzen
+        // Set new frequency
         int originalFreq = currentMode.dmDisplayFrequency;
         currentMode.dmDisplayFrequency = hz;
         currentMode.dmFields = DM_DISPLAYFREQUENCY | DM_PELSWIDTH | DM_PELSHEIGHT | DM_BITSPERPEL;
 
-        // Erst testen ob der Modus unterstützt wird
+        // First test if the mode is supported
         int testResult = ChangeDisplaySettingsEx(
             deviceName,
             ref currentMode,
@@ -214,11 +214,11 @@ public static class DisplayUtilLive
 
         if (testResult != DISP_CHANGE_SUCCESSFUL)
         {
-            message = string.Format("{0} Hz → {1} Hz NICHT unterstützt (CDS_TEST failed)", originalFreq, hz);
+            message = string.Format("{0} Hz → {1} Hz NOT supported (CDS_TEST failed)", originalFreq, hz);
             return false;
         }
 
-        // Nun tatsächlich ändern
+        // Now actually change
         int changeResult = ChangeDisplaySettingsEx(
             deviceName,
             ref currentMode,
@@ -229,29 +229,29 @@ public static class DisplayUtilLive
         switch (changeResult)
         {
             case DISP_CHANGE_SUCCESSFUL:
-                message = string.Format("{0} Hz → {1} Hz erfolgreich", originalFreq, hz);
+                message = string.Format("{0} Hz → {1} Hz successful", originalFreq, hz);
                 return true;
 
             case DISP_CHANGE_RESTART:
-                message = string.Format("{0} Hz → {1} Hz erfordert Neustart", originalFreq, hz);
-                return true; // Als Erfolg werten, aber Hinweis
+                message = string.Format("{0} Hz → {1} Hz requires restart", originalFreq, hz);
+                return true; // Consider as success, but note
 
             case DISP_CHANGE_BADMODE:
-                message = string.Format("{0} Hz → {1} Hz ungültiger Modus", originalFreq, hz);
+                message = string.Format("{0} Hz → {1} Hz invalid mode", originalFreq, hz);
                 return false;
 
             default:
-                message = string.Format("{0} Hz → {1} Hz Fehler (Code: {2})", originalFreq, hz, changeResult);
+                message = string.Format("{0} Hz → {1} Hz error (code: {2})", originalFreq, hz, changeResult);
                 return false;
         }
     }
 
     /// <summary>
-    /// Gibt alle verfügbaren Display-Modi für einen Monitor aus (Debug-Methode)
+    /// Lists all available display modes for a monitor (debug method)
     /// </summary>
     public static void ListSupportedModes(string deviceName)
     {
-        Console.WriteLine(string.Format("\nVerfügbare Modi für {0}:", deviceName));
+        Console.WriteLine(string.Format("\nAvailable modes for {0}:", deviceName));
         DEVMODE mode = new DEVMODE();
         mode.dmSize = (short)Marshal.SizeOf(mode);
         int modeIndex = 0;
@@ -272,11 +272,11 @@ public static class DisplayUtilLive
     }
 
     /// <summary>
-    /// Gibt den aktuellen Status aller Monitore aus (Debug-Methode)
+    /// Displays the current status of all monitors (debug method)
     /// </summary>
     public static void GetCurrentStatus()
     {
-        Console.WriteLine("\n=== Aktuelle Monitor-Konfiguration ===");
+        Console.WriteLine("\n=== Current Monitor Configuration ===");
 
         uint deviceIndex = 0;
         DISPLAY_DEVICE device = new DISPLAY_DEVICE();
@@ -294,9 +294,9 @@ public static class DisplayUtilLive
                     Console.WriteLine(string.Format("\n{0}:", device.DeviceName));
                     Console.WriteLine(string.Format("  Name: {0}", device.DeviceString));
                     Console.WriteLine(string.Format("  ID: {0}", device.DeviceID));
-                    Console.WriteLine(string.Format("  Auflösung: {0}x{1}", currentMode.dmPelsWidth, currentMode.dmPelsHeight));
-                    Console.WriteLine(string.Format("  Frequenz: {0} Hz", currentMode.dmDisplayFrequency));
-                    Console.WriteLine(string.Format("  Farbtiefe: {0} bit", currentMode.dmBitsPerPel));
+                    Console.WriteLine(string.Format("  Resolution: {0}x{1}", currentMode.dmPelsWidth, currentMode.dmPelsHeight));
+                    Console.WriteLine(string.Format("  Frequency: {0} Hz", currentMode.dmDisplayFrequency));
+                    Console.WriteLine(string.Format("  Color depth: {0} bit", currentMode.dmBitsPerPel));
                 }
             }
 
@@ -304,5 +304,11 @@ public static class DisplayUtilLive
             device = new DISPLAY_DEVICE();
             device.cb = Marshal.SizeOf(device);
         }
+    }
+
+    // Backward compatibility alias
+    public static void SetGPUMonitorsTo(int hz)
+    {
+        SetAllMonitorsTo(hz);
     }
 }
