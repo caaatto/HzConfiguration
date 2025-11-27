@@ -16,153 +16,40 @@ Write-Host "  Erzwinge $refresh Hz auf allen Monitoren (LIVE)" -ForegroundColor 
 Write-Host "==============================" -ForegroundColor Cyan
 
 # -----------------------------
-# 0. Sicherstellen, dass Add-Type nicht zweimal versucht wird
+# 0. DLL laden von C:\Local\Files
 # -----------------------------
+$dllPath = "C:\Local\Files\DisplayUtilLive.dll"
+
+# Prüfen, ob die DLL existiert
+if (-not (Test-Path $dllPath)) {
+    Write-Host "FEHLER: DLL nicht gefunden!" -ForegroundColor Red
+    Write-Host "Erwartet: $dllPath" -ForegroundColor Yellow
+    Write-Host "`nBitte sicherstellen, dass:" -ForegroundColor Yellow
+    Write-Host "  1. Die DLL kompiliert wurde (Build-DLL.ps1 oder Build.bat)" -ForegroundColor Gray
+    Write-Host "  2. Die DLL nach C:\Local\Files kopiert wurde" -ForegroundColor Gray
+    exit 1
+}
+
+# Prüfen, ob der Typ bereits geladen ist
 $needAddType = $true
 try {
-    # Testen, ob der Typ bereits geladen ist
     $null = [DisplayUtilLive]
     $needAddType = $false
+    Write-Host "DLL bereits geladen — Add-Type übersprungen." -ForegroundColor DarkYellow
 } catch {
     $needAddType = $true
 }
 
+# DLL laden
 if ($needAddType) {
-    Add-Type -Language CSharp @"
-using System;
-using System.Runtime.InteropServices;
-
-public class DisplayUtilLive
-{
-    private const int ENUM_CURRENT_SETTINGS = -1;
-    private const int CDS_UPDATEREGISTRY = 0x01;
-    private const int CDS_GLOBAL = 0x08;
-    private const int DISP_CHANGE_SUCCESSFUL = 0;
-
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-    public struct DEVMODE
-    {
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
-        public string dmDeviceName;
-        public short  dmSpecVersion;
-        public short  dmDriverVersion;
-        public short  dmSize;
-        public short  dmDriverExtra;
-        public int    dmFields;
-        public int    dmPositionX;
-        public int    dmPositionY;
-        public int    dmPelsWidth;
-        public int    dmPelsHeight;
-        public int    dmDisplayOrientation;
-        public int    dmDisplayFixedOutput;
-        public short  dmColor;
-        public short  dmDuplex;
-        public short  dmYResolution;
-        public short  dmTTOption;
-        public short  dmCollate;
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
-        public string dmFormName;
-        public short  dmLogPixels;
-        public int    dmBitsPerPel;
-        public int    dmPelsWidth2;
-        public int    dmPelsHeight2;
-        public int    dmDisplayFlags;
-        public int    dmDisplayFrequency;
+    try {
+        Write-Host "Lade DLL von: $dllPath" -ForegroundColor Cyan
+        Add-Type -Path $dllPath -ErrorAction Stop
+        Write-Host "✓ DLL erfolgreich geladen" -ForegroundColor Green
+    } catch {
+        Write-Host "FEHLER beim Laden der DLL: $($_.Exception.Message)" -ForegroundColor Red
+        exit 1
     }
-
-    [DllImport("user32.dll")]
-    private static extern bool EnumDisplayDevices(string lpDevice, uint iDevNum, ref DISPLAY_DEVICE lpDisplayDevice, uint dwFlags);
-
-    [DllImport("user32.dll")]
-    private static extern bool EnumDisplaySettings(string deviceName, int modeNum, ref DEVMODE devMode);
-
-    [DllImport("user32.dll")]
-    private static extern int ChangeDisplaySettingsEx(string deviceName, ref DEVMODE devMode, IntPtr hwnd, uint flags, IntPtr lParam);
-
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-    public struct DISPLAY_DEVICE
-    {
-        public int cb;
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
-        public string DeviceName;
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
-        public string DeviceString;
-        public int StateFlags;
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
-        public string DeviceID;
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
-        public string DeviceKey;
-    }
-
-    public static void SetGPUMonitorsTo(int refresh)
-    {
-        DISPLAY_DEVICE d = new DISPLAY_DEVICE();
-        d.cb = Marshal.SizeOf(d);
-        uint devNum = 0;
-
-        while (EnumDisplayDevices(null, devNum, ref d, 0))
-        {
-            bool isActive = (d.StateFlags & 0x00000001) != 0;
-            bool isDisplayLink = d.DeviceString != null && d.DeviceString.IndexOf("DisplayLink", StringComparison.OrdinalIgnoreCase) >= 0;
-
-            if (isActive && !isDisplayLink)
-            {
-                // hole aktuellen Modus (Auflösung / BPP)
-                DEVMODE cur = new DEVMODE();
-                cur.dmSize = (short)Marshal.SizeOf(cur);
-                if (!EnumDisplaySettings(d.DeviceName, ENUM_CURRENT_SETTINGS, ref cur))
-                {
-                    Console.WriteLine(String.Format("→ GPU {0} ({1}) - aktueller Modus konnte nicht gelesen werden.", d.DeviceName, d.DeviceString));
-                    devNum++;
-                    d.cb = Marshal.SizeOf(d);
-                    continue;
-                }
-
-                Console.WriteLine(String.Format("→ GPU {0} ({1}) auf {2} Hz ...", d.DeviceName, d.DeviceString, refresh));
-
-                // suche einen Modus mit gleicher Auflösung + BPP + gewünschter Hz
-                DEVMODE candidate = new DEVMODE();
-                candidate.dmSize = (short)Marshal.SizeOf(candidate);
-                int modeIndex = 0;
-                bool found = false;
-
-                while (EnumDisplaySettings(d.DeviceName, modeIndex, ref candidate))
-                {
-                    if (candidate.dmPelsWidth == cur.dmPelsWidth
-                        && candidate.dmPelsHeight == cur.dmPelsHeight
-                        && candidate.dmBitsPerPel == cur.dmBitsPerPel
-                        && candidate.dmDisplayFrequency == refresh)
-                    {
-                        found = true;
-                        break;
-                    }
-                    modeIndex++;
-                }
-
-                if (found)
-                {
-                    int res = ChangeDisplaySettingsEx(d.DeviceName, ref candidate, IntPtr.Zero,
-                        CDS_UPDATEREGISTRY | CDS_GLOBAL, IntPtr.Zero);
-                    if (res == DISP_CHANGE_SUCCESSFUL)
-                        Console.WriteLine("   ✓ Erfolgreich geändert.");
-                    else
-                        Console.WriteLine(String.Format("Fehlercode: {0}", res));
-                }
-                else
-                {
-                    Console.WriteLine(String.Format("   ⚠ {0} Hz nicht verfügbar für {1} (bei aktueller Auflösung).", refresh, d.DeviceName));
-                }
-            }
-
-            devNum++;
-            d.cb = Marshal.SizeOf(d);
-        }
-    }
-}
-"@  # Ende Add-Type
-}
-else {
-    Write-Host "C#-Typ [DisplayUtilLive] bereits geladen — Add-Type übersprungen." -ForegroundColor DarkYellow
 }
 
 try {

@@ -173,9 +173,34 @@ if (Test-Path $outputDll) {
         Write-Warning "DLL konnte nicht geladen werden: $($_.Exception.Message)"
     }
 
+    # Kopiere nach C:\Local\Files für portable Deployment
+    Write-Host "`nKopiere DLL nach C:\Local\Files..." -ForegroundColor Cyan
+    $deployPath = "C:\Local\Files"
+    $deployDll = Join-Path $deployPath "DisplayUtilLive.dll"
+
+    try {
+        if (-not (Test-Path $deployPath)) {
+            New-Item -ItemType Directory -Path $deployPath -Force | Out-Null
+            Write-Host "Verzeichnis erstellt: $deployPath" -ForegroundColor Green
+        }
+
+        Copy-Item -Path $outputDll -Destination $deployDll -Force -ErrorAction Stop
+        Write-Host "✓ DLL kopiert nach: $deployDll" -ForegroundColor Green
+
+        # PDB auch kopieren (falls vorhanden)
+        if (Test-Path $outputPdb) {
+            Copy-Item -Path $outputPdb -Destination (Join-Path $deployPath "DisplayUtilLive.pdb") -Force -ErrorAction SilentlyContinue
+        }
+
+    } catch {
+        Write-Warning "Fehler beim Kopieren nach C:\Local\Files: $($_.Exception.Message)"
+        Write-Warning "Möglicherweise sind Admin-Rechte erforderlich."
+    }
+
     Write-Host "`nNächste Schritte:" -ForegroundColor Cyan
     Write-Host "  1. DLL testen: .\Test-DLL.ps1" -ForegroundColor Gray
-    Write-Host "  2. In baramundi-Paket kopieren: Copy-Item '$outputDll' '...\baramundi\Files\bin\'" -ForegroundColor Gray
+    Write-Host "  2. Hertz-Skript ausführen: .\Hertz.ps1 60" -ForegroundColor Gray
+    Write-Host "  3. In baramundi-Paket kopieren (falls benötigt)" -ForegroundColor Gray
 
 } else {
     Write-Error "DLL wurde nicht erstellt: $outputDll"
