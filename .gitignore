@@ -27,5 +27,6 @@ $RECYCLE.BIN/
 *_stdout.txt
 *_stderr.txt
 
+
 # Ausnahmen: DLL im bin-Ordner NACH dem Build behalten (optional)
 # !bin/DisplayUtilLive.dll
