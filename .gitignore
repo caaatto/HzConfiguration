@@ -1,0 +1,31 @@
+# Build-Ausgabe
+bin/
+obj/
+*.dll
+*.pdb
+*.exe
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Temporäre Dateien
+*.tmp
+*.log
+*.bak
+*~
+
+# Windows
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# PowerShell Temporäre Dateien
+*_stdout.txt
+*_stderr.txt
+
+# Ausnahmen: DLL im bin-Ordner NACH dem Build behalten (optional)
+# !bin/DisplayUtilLive.dll
