@@ -1,0 +1,66 @@
+# HzConfiguration - baramundi Deployment Package
+Generated: 2025-11-27 13:39:15
+
+## Package Contents
+
+Files/
+  DisplayUtilLive.dll     - Main DLL for monitor control
+
+Scripts:
+  01_registry.ps1         - DisplayLink registry setup (Step 1)
+  02_gpu_change.ps1       - GPU refresh rate change (Step 2)
+  03_displaylink_reload.ps1 - DisplayLink reload (Step 3)
+  Run-All.ps1            - Combined wrapper script
+
+Documentation:
+  README.md              - Full deployment instructions
+  MANIFEST.txt           - This file
+
+## baramundi Configuration
+
+### File Deployment (Baustein: File-Deploy)
+
+Deploy all files from this package to target path C:\Local\
+
+Source -> Target mapping:
+  Files\DisplayUtilLive.dll -> C:\Local\Files\DisplayUtilLive.dll
+  01_registry.ps1 -> C:\Local\01_registry.ps1
+  02_gpu_change.ps1 -> C:\Local\02_gpu_change.ps1
+  03_displaylink_reload.ps1 -> C:\Local\03_displaylink_reload.ps1
+  Run-All.ps1 -> C:\Local\Run-All.ps1
+
+### Script Execution (Baustein: Execute)
+
+Option A - Three separate jobs:
+  Job 1: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\01_registry.ps1" -Hz 60
+  Job 2: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\02_gpu_change.ps1" -Hz 60
+  Job 3: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\03_displaylink_reload.ps1" -Hz 60
+
+Option B - Single combined job:
+  Job: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\Run-All.ps1" -Hz 60
+
+All jobs:
+  - Run as: System
+  - Admin: Yes
+  - ExecutionPolicy: Bypass
+
+## Quick Test
+
+After deployment to C:\Local, test on a client:
+
+```powershell
+# Check files
+Test-Path "C:\Local\Files\DisplayUtilLive.dll"
+Test-Path "C:\Local\02_gpu_change.ps1"
+
+# Run (requires admin)
+C:\Local\Run-All.ps1 -Hz 60
+
+# Verify
+Add-Type -Path "C:\Local\Files\DisplayUtilLive.dll"
+[DisplayUtilLive]::GetCurrentStatus()
+```
+
+## Support
+
+For detailed instructions, see README.md in this package.
