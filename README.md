@@ -14,11 +14,25 @@ Portable DLL for changing monitor refresh rates on Windows (Intel, NVIDIA, AMD, 
 
 ## Quick Start
 
-### Option 1: Use Pre-compiled DLL (Recommended)
+### Option 1: Use Hertz.ps1 (Easiest)
+
+The `Hertz.ps1` script automatically loads the DLL from `C:\Local\Files` and sets the refresh rate:
 
 ```powershell
-# Load DLL
-Add-Type -Path ".\bin\DisplayUtilLive.dll"
+# Set all monitors to 60 Hz
+.\Hertz.ps1 60
+
+# Set all monitors to 144 Hz
+.\Hertz.ps1 144
+```
+
+**Note:** The DLL must be in `C:\Local\Files\DisplayUtilLive.dll` (see Build section below).
+
+### Option 2: Use DLL Directly
+
+```powershell
+# Load DLL from C:\Local\Files
+Add-Type -Path "C:\Local\Files\DisplayUtilLive.dll"
 
 # View current configuration
 [DisplayUtilLive]::GetCurrentStatus()
@@ -27,7 +41,7 @@ Add-Type -Path ".\bin\DisplayUtilLive.dll"
 [DisplayUtilLive]::SetAllMonitorsTo(60)
 ```
 
-### Option 2: Build from Source
+### Option 3: Build from Source
 
 **PowerShell (no VS required):**
 ```powershell
@@ -43,6 +57,10 @@ Build.bat
 1. Open `DisplayUtilLive.sln`
 2. Build → Build Solution (Ctrl+Shift+B)
 
+**Note:** All build methods automatically copy the DLL to:
+- `.\bin\DisplayUtilLive.dll` (local build output)
+- `C:\Local\Files\DisplayUtilLive.dll` (portable deployment location)
+
 ---
 
 ## Files
@@ -50,14 +68,21 @@ Build.bat
 ```
 HzConfiguration/
 ├── bin/
-│   └── DisplayUtilLive.dll    # Pre-compiled DLL (portable)
+│   └── DisplayUtilLive.dll    # Compiled DLL (build output)
 ├── DisplayUtilLive.cs          # C# source code
 ├── Build-DLL.ps1               # PowerShell build script
 ├── Build.bat                   # Batch build script (alternative)
 ├── Test-DLL.ps1                # Test script
+├── Hertz.ps1                   # Main script for setting refresh rates
 ├── DisplayUtilLive.csproj      # Visual Studio project
 ├── DisplayUtilLive.sln         # Visual Studio solution
 └── README.md                   # This file
+```
+
+**Deployment Location:**
+```
+C:\Local\Files\
+└── DisplayUtilLive.dll         # DLL for portable use (auto-copied during build)
 ```
 
 ---
@@ -133,11 +158,18 @@ Available modes for \\.\DISPLAY1:
 
 The DLL works on any Windows system without installing .NET Framework (it's built-in on Windows 10/11).
 
-**Copy and run:**
+**Recommended portable location:**
 ```powershell
-# 1. Copy bin/DisplayUtilLive.dll to target machine
+# DLL is automatically deployed to C:\Local\Files during build
+# Use Hertz.ps1 which loads from this location:
+.\Hertz.ps1 60
+```
+
+**Manual deployment:**
+```powershell
+# 1. Copy bin/DisplayUtilLive.dll to C:\Local\Files on target machine
 # 2. Run from any location
-Add-Type -Path "C:\Temp\DisplayUtilLive.dll"
+Add-Type -Path "C:\Local\Files\DisplayUtilLive.dll"
 [DisplayUtilLive]::SetAllMonitorsTo(60)
 ```
 
