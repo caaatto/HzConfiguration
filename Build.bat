@@ -44,9 +44,21 @@ echo.
 REM Dateigröße anzeigen (optional)
 for %%F in ("bin\DisplayUtilLive.dll") do echo Groesse: %%~zF Bytes
 
+REM Kopiere nach C:\Local\Files für portable Deployment
+echo.
+echo Kopiere DLL nach C:\Local\Files...
+if not exist "C:\Local\Files\" mkdir "C:\Local\Files\"
+copy /Y "bin\DisplayUtilLive.dll" "C:\Local\Files\"
+if errorlevel 1 (
+    echo FEHLER beim Kopieren nach C:\Local\Files (Admin-Rechte erforderlich?)
+) else (
+    echo ✓ DLL kopiert nach: C:\Local\Files\DisplayUtilLive.dll
+)
+
 echo.
 echo Naechste Schritte:
 echo   1. DLL testen: powershell -ExecutionPolicy Bypass -File Test-DLL.ps1
-echo   2. In baramundi-Paket kopieren
+echo   2. Hertz-Skript ausfuehren: powershell -ExecutionPolicy Bypass -File Hertz.ps1 60
+echo   3. In baramundi-Paket kopieren (falls benoetigt)
 echo.
 pause
