@@ -27,5 +27,9 @@ $RECYCLE.BIN/
 *_stdout.txt
 *_stderr.txt
 
+# Claude Code
+.claude/
+.claude/**
+
 # Ausnahmen: DLL im bin-Ordner NACH dem Build behalten (optional)
 # !bin/DisplayUtilLive.dll
