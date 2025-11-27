@@ -1,9 +1,12 @@
-# Build-Ausgabe
-bin/
+# Build output
+bin/Debug/
+bin/Release/
 obj/
-*.dll
 *.pdb
 *.exe
+
+# EXCEPTION: Include portable DLL
+!bin/DisplayUtilLive.dll
 
 # Visual Studio
 .vs/
