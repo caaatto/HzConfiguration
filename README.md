@@ -68,15 +68,31 @@ Build.bat
 ```
 HzConfiguration/
 ├── bin/
-│   └── DisplayUtilLive.dll    # Compiled DLL (build output)
-├── DisplayUtilLive.cs          # C# source code
-├── Build-DLL.ps1               # PowerShell build script
-├── Build.bat                   # Batch build script (alternative)
-├── Test-DLL.ps1                # Test script
-├── Hertz.ps1                   # Main script for setting refresh rates
-├── DisplayUtilLive.csproj      # Visual Studio project
-├── DisplayUtilLive.sln         # Visual Studio solution
-└── README.md                   # This file
+│   └── DisplayUtilLive.dll         # Compiled DLL (build output)
+├── baramundi/                      # baramundi-ready scripts
+│   ├── 01_registry.ps1             # DisplayLink registry setup
+│   ├── 02_gpu_change.ps1           # GPU refresh rate change
+│   ├── 03_displaylink_reload.ps1   # DisplayLink device reload
+│   ├── Run-All.ps1                 # Combined wrapper script
+│   └── README.md                   # Deployment instructions
+├── deploy/                         # Generated deployment package
+│   ├── Files/
+│   │   └── DisplayUtilLive.dll     # Ready for deployment
+│   ├── 01_registry.ps1
+│   ├── 02_gpu_change.ps1
+│   ├── 03_displaylink_reload.ps1
+│   ├── Run-All.ps1
+│   ├── README.md
+│   └── MANIFEST.txt
+├── DisplayUtilLive.cs              # C# source code
+├── Build-DLL.ps1                   # PowerShell build script
+├── Build.bat                       # Batch build script (alternative)
+├── Deploy-Package.ps1              # Creates baramundi deployment package
+├── Test-DLL.ps1                    # Test script
+├── Hertz.ps1                       # Main script for setting refresh rates
+├── DisplayUtilLive.csproj          # Visual Studio project
+├── DisplayUtilLive.sln             # Visual Studio solution
+└── README.md                       # This file
 ```
 
 **Deployment Location:**
@@ -191,101 +207,58 @@ Build.bat
 
 ## baramundi Integration
 
-### Package Structure
+**Ready-to-use deployment package available!**
 
-```
-HzConfig-Package/
-├── bin/
-│   └── DisplayUtilLive.dll
-└── scripts/
-    ├── 01_registry.ps1        # DisplayLink registry setup
-    ├── 02_gpu_change.ps1      # Change refresh rate
-    └── 03_displaylink_reload.ps1  # DisplayLink live reload
-```
+### Quick Start for baramundi
 
-### Script 1: Registry (DisplayLink)
-
+**1. Create deployment package:**
 ```powershell
-param([int]$Hz = 60)
-
-Get-CimInstance Win32_VideoController |
-    Where-Object { $_.Name -like '*DisplayLink*' } |
-    ForEach-Object {
-        $pnp = $_.PNPDeviceID
-        $regPath = "HKLM:\SYSTEM\CurrentControlSet\Enum\$pnp\Device Parameters"
-
-        if (Test-Path $regPath) {
-            New-ItemProperty -Path $regPath -Name "DisplayFrequency" `
-                             -Value $Hz -PropertyType DWord -Force | Out-Null
-            Write-Output "Registry: $regPath = $Hz Hz"
-        }
-    }
-exit 0
+.\Deploy-Package.ps1
 ```
 
-**Settings:**
-- Run as: System
-- Timeout: 30s
+This creates `.\deploy\` with all files ready for baramundi deployment.
 
-### Script 2: GPU Change (DLL)
+**2. Upload to baramundi:**
+- Upload contents of `.\deploy\` to baramundi server
+- Configure File-Deploy: `deploy\*` → `C:\Local\`
 
+**3. Create Execute Job:**
 ```powershell
-param([int]$Hz = 60)
+# Option A: Single combined job
+powershell.exe -ExecutionPolicy Bypass -File "C:\Local\Run-All.ps1" -Hz 60
 
-$dllPath = "$env:ProgramData\baramundi\Files\HzConfig\bin\DisplayUtilLive.dll"
-
-if (-not (Test-Path $dllPath)) {
-    $dllPath = Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) "..\bin\DisplayUtilLive.dll"
-}
-
-try {
-    Add-Type -Path $dllPath -ErrorAction Stop
-    [DisplayUtilLive]::SetAllMonitorsTo($Hz)
-    Write-Output "All monitors set to $Hz Hz"
-    exit 0
-} catch {
-    Write-Error "Error: $($_.Exception.Message)"
-    exit 1
-}
+# Option B: Three separate jobs (recommended)
+Job 1: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\01_registry.ps1" -Hz 60
+Job 2: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\02_gpu_change.ps1" -Hz 60
+Job 3: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\03_displaylink_reload.ps1" -Hz 60
 ```
 
-**Settings:**
-- Run as: System
-- Timeout: 120s
+**All jobs:** Run as System, Admin: Yes
 
-### Script 3: DisplayLink Reload
+### Scripts Included
 
-```powershell
-param([int]$Hz = 60)
+All scripts are in `.\baramundi\` and work with fixed paths under `C:\Local\`:
 
-$displayLink = Get-CimInstance Win32_VideoController |
-               Where-Object { $_.Name -like '*DisplayLink*' }
+- **01_registry.ps1** - Sets DisplayLink registry values
+- **02_gpu_change.ps1** - Changes refresh rates (main script)
+- **03_displaylink_reload.ps1** - Reloads DisplayLink devices
+- **Run-All.ps1** - Runs all three scripts sequentially
 
-if (-not $displayLink) {
-    Write-Output "No DisplayLink controllers found (normal for Intel/NVIDIA/AMD-only)"
-    exit 0
-}
+### Features
 
-foreach ($dev in $displayLink) {
-    $id = $dev.PNPDeviceID
+✅ **Portable** - Uses fixed path `C:\Local\Files\DisplayUtilLive.dll`
+✅ **No search logic** - baramundi handles file deployment
+✅ **Clear exit codes** - 0=Success, 1-3=Error codes for monitoring
+✅ **Universal** - Works with Intel, NVIDIA, AMD, DisplayLink
+✅ **Tested** - Ready for production deployment
 
-    try {
-        Disable-PnpDevice -InstanceId $id -Confirm:$false -ErrorAction Stop
-        Start-Sleep -Seconds 1
-        Enable-PnpDevice -InstanceId $id -Confirm:$false -ErrorAction Stop
-        Start-Sleep -Milliseconds 800
+### Full Documentation
 
-        Write-Output "Live-reload: $($dev.Name) successful"
-    } catch {
-        Write-Warning "Live-reload failed: $($_.Exception.Message)"
-    }
-}
-exit 0
-```
-
-**Settings:**
-- Run as: System
-- Timeout: 60s
+See `.\baramundi\README.md` for:
+- Detailed baramundi configuration
+- Exit codes and troubleshooting
+- File deployment mapping
+- Testing procedures
 
 ---
 
