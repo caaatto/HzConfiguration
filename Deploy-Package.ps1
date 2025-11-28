@@ -156,7 +156,7 @@ Documentation:
 
 ## baramundi Configuration
 
-### File Deployment (Baustein: File-Deploy)
+### File Deployment (Module: File-Deploy)
 
 Deploy all files from this package to target path C:\Local\MonitorFix\deploy\
 
@@ -167,7 +167,7 @@ Source -> Target mapping:
   03_displaylink_reload.ps1 -> C:\Local\MonitorFix\deploy\03_displaylink_reload.ps1
   Run-All.ps1 -> C:\Local\MonitorFix\deploy\Run-All.ps1
 
-### Script Execution (Baustein: Execute)
+### Script Execution (Module: Execute)
 
 Option A - Three separate jobs:
   Job 1: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\01_registry.ps1" -Hz 60

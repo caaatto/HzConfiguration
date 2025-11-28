@@ -1,140 +1,140 @@
 # baramundi Integration - Monitor Refresh Rate Manager
 
-Diese Scripts sind fertig für die Integration in baramundi. Alle Dateien werden von baramundi nach `C:\Local` kopiert, die Scripts arbeiten direkt mit diesen festen Pfaden.
+These scripts are ready for integration into baramundi. All files are copied by baramundi to `C:\Local`, the scripts work directly with these fixed paths.
 
 ---
 
-## Deployment-Struktur
+## Deployment Structure
 
-baramundi kopiert alle Dateien nach `C:\Local` in diese Struktur:
+baramundi copies all files to `C:\Local` in this structure:
 
 ```
-C:\Local\
+C:\Local\MonitorFix\deploy\
 ├── Files\
 │   └── DisplayUtilLive.dll
-└── (optional: scripts können hier oder woanders liegen)
+└── (optional: scripts can be located here or elsewhere)
 ```
 
-Die Scripts erwarten die DLL unter: **`C:\Local\Files\DisplayUtilLive.dll`**
+The scripts expect the DLL at: **`C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files\DisplayUtilLive.dll`**
 
 ---
 
-## Script-Übersicht
+## Script Overview
 
 ### 1. `01_registry.ps1` - DisplayLink Registry Setup
 
-**Was es macht:**
-- Setzt Registry-Wert `DisplayFrequency` für alle DisplayLink-Geräte
-- Muss VOR `02_gpu_change.ps1` ausgeführt werden
-- Harmlos für Systeme ohne DisplayLink (Exit Code 0)
+**What it does:**
+- Sets registry value `DisplayFrequency` for all DisplayLink devices
+- Must be executed BEFORE `02_gpu_change.ps1`
+- Harmless for systems without DisplayLink (Exit Code 0)
 
-**Aufruf:**
+**Usage:**
 ```powershell
-powershell.exe -ExecutionPolicy Bypass -File "C:\Local\01_registry.ps1" -Hz 60
+powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\01_registry.ps1" -Hz 60
 ```
 
-**Parameter:**
-- `-Hz` : Zielfrequenz in Hz (Standard: 60)
+**Parameters:**
+- `-Hz` : Target frequency in Hz (default: 60)
 
 **Exit Codes:**
-- `0` = Erfolg (oder keine DisplayLink-Geräte gefunden)
-- `1` = Fehler beim Setzen der Registry
+- `0` = Success (or no DisplayLink devices found)
+- `1` = Error setting registry
 
-**baramundi-Einstellungen:**
+**baramundi Settings:**
 - **Run as:** System
 - **Timeout:** 30s
-- **Admin:** Ja
+- **Admin:** Yes
 
 ---
 
 ### 2. `02_gpu_change.ps1` - GPU Refresh Rate Change
 
-**Was es macht:**
-- Lädt `DisplayUtilLive.dll` von `C:\Local\Files\`
-- Ändert die Bildwiederholrate aller Monitore (Intel, NVIDIA, AMD, DisplayLink)
-- **Dies ist das Hauptscript**
+**What it does:**
+- Loads `DisplayUtilLive.dll` from `C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files\`
+- Changes the refresh rate of all monitors (Intel, NVIDIA, AMD, DisplayLink)
+- **This is the main script**
 
-**Aufruf:**
+**Usage:**
 ```powershell
-powershell.exe -ExecutionPolicy Bypass -File "C:\Local\02_gpu_change.ps1" -Hz 60
+powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\02_gpu_change.ps1" -Hz 60
 ```
 
-**Parameter:**
-- `-Hz` : Zielfrequenz in Hz (Standard: 60)
+**Parameters:**
+- `-Hz` : Target frequency in Hz (default: 60)
 
 **Exit Codes:**
-- `0` = Erfolg
-- `1` = DLL nicht gefunden
-- `2` = DLL konnte nicht geladen werden
-- `3` = Frequenzänderung fehlgeschlagen
+- `0` = Success
+- `1` = DLL not found
+- `2` = DLL could not be loaded
+- `3` = Frequency change failed
 
-**baramundi-Einstellungen:**
+**baramundi Settings:**
 - **Run as:** System
 - **Timeout:** 120s
-- **Admin:** Ja
+- **Admin:** Yes
 
 ---
 
 ### 3. `03_displaylink_reload.ps1` - DisplayLink Live Reload
 
-**Was es macht:**
-- Deaktiviert und aktiviert DisplayLink-Geräte (PnP-Reload)
-- Lädt die neuen Registry-Werte
-- Muss NACH `01_registry.ps1` und `02_gpu_change.ps1` laufen
-- Harmlos für Systeme ohne DisplayLink (Exit Code 0)
+**What it does:**
+- Disables and enables DisplayLink devices (PnP reload)
+- Loads the new registry values
+- Must run AFTER `01_registry.ps1` and `02_gpu_change.ps1`
+- Harmless for systems without DisplayLink (Exit Code 0)
 
-**Aufruf:**
+**Usage:**
 ```powershell
-powershell.exe -ExecutionPolicy Bypass -File "C:\Local\03_displaylink_reload.ps1" -Hz 60
+powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\03_displaylink_reload.ps1" -Hz 60
 ```
 
-**Parameter:**
-- `-Hz` : Zielfrequenz in Hz (optional, nur für Logging)
+**Parameters:**
+- `-Hz` : Target frequency in Hz (optional, only for logging)
 
 **Exit Codes:**
-- `0` = Erfolg (oder keine DisplayLink-Geräte gefunden)
-- `1` = Fehler beim Neuladen der Geräte
+- `0` = Success (or no DisplayLink devices found)
+- `1` = Error reloading devices
 
-**baramundi-Einstellungen:**
+**baramundi Settings:**
 - **Run as:** System
 - **Timeout:** 60s
-- **Admin:** Ja
+- **Admin:** Yes
 
 ---
 
-## baramundi-Konfiguration
+## baramundi Configuration
 
-### Option A: Drei getrennte Jobs (empfohlen für Flexibilität)
+### Option A: Three Separate Jobs (recommended for flexibility)
 
 **Job 1: DisplayLink Registry Setup**
 ```
-Befehl: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\01_registry.ps1" -Hz 60
+Command: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\01_registry.ps1" -Hz 60
 Run as: System
 Timeout: 30s
-Reihenfolge: 1
+Order: 1
 ```
 
-**Job 2: GPU Change (Hauptjob)**
+**Job 2: GPU Change (Main Job)**
 ```
-Befehl: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\02_gpu_change.ps1" -Hz 60
+Command: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\02_gpu_change.ps1" -Hz 60
 Run as: System
 Timeout: 120s
-Reihenfolge: 2
-Abhängigkeit: Job 1 muss erfolgreich sein (Exit Code 0)
+Order: 2
+Dependency: Job 1 must be successful (Exit Code 0)
 ```
 
 **Job 3: DisplayLink Reload**
 ```
-Befehl: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\03_displaylink_reload.ps1" -Hz 60
+Command: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\03_displaylink_reload.ps1" -Hz 60
 Run as: System
 Timeout: 60s
-Reihenfolge: 3
-Abhängigkeit: Job 2 muss erfolgreich sein (Exit Code 0)
+Order: 3
+Dependency: Job 2 must be successful (Exit Code 0)
 ```
 
-### Option B: Ein kombinierter Job
+### Option B: One Combined Job
 
-Erstelle ein Wrapper-Script `Run-All.ps1`:
+Create a wrapper script `Run-All.ps1`:
 
 ```powershell
 param([int]$Hz = 60)
@@ -143,21 +143,21 @@ Write-Output "=== Starting HzConfiguration (3 steps) ==="
 Write-Output ""
 
 # Step 1
-& "C:\Local\01_registry.ps1" -Hz $Hz
+& "C:\Local\MonitorFix\deploy\01_registry.ps1" -Hz $Hz
 if ($LASTEXITCODE -ne 0) {
     Write-Output "Step 1 failed!"
     exit 1
 }
 
 # Step 2
-& "C:\Local\02_gpu_change.ps1" -Hz $Hz
+& "C:\Local\MonitorFix\deploy\02_gpu_change.ps1" -Hz $Hz
 if ($LASTEXITCODE -ne 0) {
     Write-Output "Step 2 failed!"
     exit 2
 }
 
 # Step 3
-& "C:\Local\03_displaylink_reload.ps1" -Hz $Hz
+& "C:\Local\MonitorFix\deploy\03_displaylink_reload.ps1" -Hz $Hz
 if ($LASTEXITCODE -ne 0) {
     Write-Output "Step 3 failed!"
     exit 3
@@ -168,9 +168,9 @@ Write-Output "=== All steps completed successfully ==="
 exit 0
 ```
 
-**Aufruf:**
+**Usage:**
 ```
-powershell.exe -ExecutionPolicy Bypass -File "C:\Local\Run-All.ps1" -Hz 60
+powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\Run-All.ps1" -Hz 60
 Run as: System
 Timeout: 180s
 ```
@@ -179,26 +179,26 @@ Timeout: 180s
 
 ## File Deployment in baramundi
 
-### Baustein-Konfiguration
+### Module Configuration
 
-**1. File-Deploy Baustein:**
+**1. File-Deploy Module:**
 
-| Quelle | Ziel |
+| Source | Target |
 |--------|------|
-| `bin\DisplayUtilLive.dll` | `C:\Local\Files\DisplayUtilLive.dll` |
-| `baramundi\01_registry.ps1` | `C:\Local\01_registry.ps1` |
-| `baramundi\02_gpu_change.ps1` | `C:\Local\02_gpu_change.ps1` |
-| `baramundi\03_displaylink_reload.ps1` | `C:\Local\03_displaylink_reload.ps1` |
+| `bin\DisplayUtilLive.dll` | `C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files\DisplayUtilLive.dll` |
+| `baramundi\01_registry.ps1` | `C:\Local\MonitorFix\deploy\01_registry.ps1` |
+| `baramundi\02_gpu_change.ps1` | `C:\Local\MonitorFix\deploy\02_gpu_change.ps1` |
+| `baramundi\03_displaylink_reload.ps1` | `C:\Local\MonitorFix\deploy\03_displaylink_reload.ps1` |
 
-**2. Execute Baustein:**
+**2. Execute Module:**
 
-Siehe "baramundi-Konfiguration" oben.
+See "baramundi Configuration" above.
 
 ---
 
-## Häufige Szenarien
+## Common Scenarios
 
-### Szenario 1: Alle Monitore auf 60 Hz setzen
+### Scenario 1: Set all monitors to 60 Hz
 
 ```
 Job: 01_registry.ps1 -Hz 60
@@ -206,36 +206,36 @@ Job: 02_gpu_change.ps1 -Hz 60
 Job: 03_displaylink_reload.ps1 -Hz 60
 ```
 
-### Szenario 2: Nur Intel/NVIDIA/AMD (kein DisplayLink)
+### Scenario 2: Only Intel/NVIDIA/AMD (no DisplayLink)
 
 ```
 Job: 02_gpu_change.ps1 -Hz 60
 ```
 
-Script `01_registry.ps1` und `03_displaylink_reload.ps1` geben Exit Code 0 zurück wenn keine DisplayLink-Geräte gefunden werden, daher kannst du alle drei Jobs immer ausführen.
+Scripts `01_registry.ps1` and `03_displaylink_reload.ps1` return Exit Code 0 if no DisplayLink devices are found, so you can always run all three jobs.
 
-### Szenario 3: Unterschiedliche Frequenzen für verschiedene Computer-Gruppen
+### Scenario 3: Different frequencies for different computer groups
 
-Erstelle mehrere Jobs mit unterschiedlichen `-Hz` Parametern:
+Create multiple jobs with different `-Hz` parameters:
 
-- **Büro-PCs:** `-Hz 60`
-- **Gaming-PCs:** `-Hz 144`
-- **Designer-PCs:** `-Hz 75`
+- **Office PCs:** `-Hz 60`
+- **Gaming PCs:** `-Hz 144`
+- **Designer PCs:** `-Hz 75`
 
 ---
 
 ## Testing
 
-### Manueller Test auf einem Client
+### Manual Test on a Client
 
-1. Dateien nach `C:\Local` kopieren (simuliert baramundi):
+1. Copy files to `C:\Local` (simulates baramundi):
 ```powershell
-# Von deinem Build-Verzeichnis
-Copy-Item ".\bin\DisplayUtilLive.dll" "C:\Local\Files\DisplayUtilLive.dll" -Force
-Copy-Item ".\baramundi\*.ps1" "C:\Local\" -Force
+# From your build directory
+Copy-Item ".\bin\DisplayUtilLive.dll" "C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files\DisplayUtilLive.dll" -Force
+Copy-Item ".\baramundi\*.ps1" "C:\Local\MonitorFix\deploy\" -Force
 ```
 
-2. Scripts ausführen (als Admin):
+2. Execute scripts (as Admin):
 ```powershell
 cd C:\Local
 .\01_registry.ps1 -Hz 60
@@ -243,10 +243,10 @@ cd C:\Local
 .\03_displaylink_reload.ps1 -Hz 60
 ```
 
-3. Ergebnis prüfen:
+3. Check results:
 ```powershell
-# Aktuelle Monitor-Konfiguration anzeigen
-Add-Type -Path "C:\Local\Files\DisplayUtilLive.dll"
+# Display current monitor configuration
+Add-Type -Path "C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files\DisplayUtilLive.dll"
 [DisplayUtilLive]::GetCurrentStatus()
 ```
 
@@ -256,65 +256,65 @@ Add-Type -Path "C:\Local\Files\DisplayUtilLive.dll"
 
 ### Problem: "DLL not found"
 
-**Lösung:**
-- Prüfe ob baramundi die DLL nach `C:\Local\Files\DisplayUtilLive.dll` kopiert hat
-- Führe auf dem Client aus: `Test-Path "C:\Local\Files\DisplayUtilLive.dll"`
+**Solution:**
+- Check if baramundi copied the DLL to `C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files\DisplayUtilLive.dll`
+- Execute on the client: `Test-Path "C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files\DisplayUtilLive.dll"`
 
-### Problem: "Access denied" oder "ChangeDisplaySettingsEx failed"
+### Problem: "Access denied" or "ChangeDisplaySettingsEx failed"
 
-**Lösung:**
-- Scripts müssen als **System** oder **Administrator** ausgeführt werden
-- Prüfe baramundi Job-Einstellungen: "Run as: System"
+**Solution:**
+- Scripts must be executed as **System** or **Administrator**
+- Check baramundi job settings: "Run as: System"
 
-### Problem: DisplayLink bleibt bei alter Frequenz
+### Problem: DisplayLink remains at old frequency
 
-**Lösung:**
-- Reihenfolge ist wichtig: Registry → GPU → Reload
-- Alle drei Scripts müssen erfolgreich durchlaufen (Exit Code 0)
-- Bei Job-Abhängigkeiten in baramundi sicherstellen, dass Jobs sequenziell laufen
+**Solution:**
+- Order is important: Registry → GPU → Reload
+- All three scripts must complete successfully (Exit Code 0)
+- For job dependencies in baramundi, ensure that jobs run sequentially
 
-### Problem: Exit Code ungleich 0
+### Problem: Exit Code not equal to 0
 
-**Exit Codes prüfen:**
+**Check Exit Codes:**
 
-| Exit Code | Script | Bedeutung |
+| Exit Code | Script | Meaning |
 |-----------|--------|-----------|
-| 0 | Alle | Erfolg |
-| 1 | 01, 03 | Allgemeiner Fehler |
-| 1 | 02 | DLL nicht gefunden |
-| 2 | 02 | DLL konnte nicht geladen werden |
-| 3 | 02 | Frequenzänderung fehlgeschlagen |
+| 0 | All | Success |
+| 1 | 01, 03 | General error |
+| 1 | 02 | DLL not found |
+| 2 | 02 | DLL could not be loaded |
+| 3 | 02 | Frequency change failed |
 
-**Logs prüfen:**
-- baramundi zeigt die Script-Ausgabe im Job-Log
-- Alle Scripts geben aussagekräftige Meldungen aus
+**Check Logs:**
+- baramundi displays the script output in the job log
+- All scripts provide meaningful messages
 
 ---
 
-## Vorteile dieser Lösung
+## Advantages of This Solution
 
-✅ **Keine Suchlogik:** Scripts verwenden feste Pfade unter `C:\Local`
-✅ **Keine Kopierfunktionen:** baramundi übernimmt File-Deploy
-✅ **Portable:** Funktioniert auf jedem Windows 10/11 ohne Installation
-✅ **Robust:** Klare Exit Codes für baramundi-Monitoring
-✅ **Flexibel:** Scripts können einzeln oder kombiniert ausgeführt werden
-✅ **Sicher:** Validierung und Error-Handling in jedem Script
-✅ **Universal:** Unterstützt Intel, NVIDIA, AMD, DisplayLink
+✅ **No search logic:** Scripts use fixed paths under `C:\Local`
+✅ **No copy functions:** baramundi handles file deployment
+✅ **Portable:** Works on any Windows 10/11 without installation
+✅ **Robust:** Clear exit codes for baramundi monitoring
+✅ **Flexible:** Scripts can be executed individually or combined
+✅ **Safe:** Validation and error handling in every script
+✅ **Universal:** Supports Intel, NVIDIA, AMD, DisplayLink
 
 ---
 
 ## Support
 
-**Probleme?**
-- Prüfe baramundi Job-Logs für Script-Ausgaben
-- Teste Scripts manuell auf einem Client
-- Stelle sicher, dass alle Dateien unter `C:\Local` existieren
-- Prüfe Admin-Rechte (Run as: System)
+**Problems?**
+- Check baramundi job logs for script outputs
+- Test scripts manually on a client
+- Ensure all files exist under `C:\Local`
+- Check admin rights (Run as: System)
 
-**Weitere Informationen:**
-- Siehe Haupt-README.md für technische Details
+**Further Information:**
+- See main README.md for technical details
 - GitHub: https://github.com/caaatto/HzConfiguration
 
 ---
 
-**Bereit für Deployment!** 🚀
+**Ready for Deployment!** 🚀

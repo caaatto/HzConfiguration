@@ -1,17 +1,17 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Kompiliert DisplayUtilLive.cs zu DisplayUtilLive.dll
+    Compiles DisplayUtilLive.cs to DisplayUtilLive.dll
 
 .DESCRIPTION
-    Findet automatisch csc.exe (.NET Framework Compiler) und kompiliert die DLL.
-    Unterstützt mehrere .NET Framework-Versionen (4.7+).
+    Automatically finds csc.exe (.NET Framework Compiler) and compiles the DLL.
+    Supports multiple .NET Framework versions (4.7+).
 
 .PARAMETER Configuration
-    Debug oder Release (Standard: Release)
+    Debug or Release (default: Release)
 
 .PARAMETER OutputPath
-    Ausgabepfad für die DLL (Standard: .\bin\)
+    Output path for the DLL (default: .\bin\)
 
 .EXAMPLE
     .\Build-DLL.ps1
@@ -28,28 +28,28 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-Write-Host "=== DisplayUtilLive.dll Build-Script ===" -ForegroundColor Cyan
-Write-Host "Konfiguration: $Configuration" -ForegroundColor Gray
+Write-Host "=== DisplayUtilLive.dll Build Script ===" -ForegroundColor Cyan
+Write-Host "Configuration: $Configuration" -ForegroundColor Gray
 
-# Quell- und Zieldateien
+# Source and target files
 $sourceFile = Join-Path $PSScriptRoot 'DisplayUtilLive.cs'
 $outputDll = Join-Path $OutputPath 'DisplayUtilLive.dll'
 $outputPdb = Join-Path $OutputPath 'DisplayUtilLive.pdb'
 
-# Validierung
+# Validation
 if (-not (Test-Path $sourceFile)) {
-    Write-Error "Quelldatei nicht gefunden: $sourceFile"
+    Write-Error "Source file not found: $sourceFile"
 }
 
-# Ausgabeverzeichnis erstellen
+# Create output directory
 if (-not (Test-Path $OutputPath)) {
     New-Item -ItemType Directory -Path $OutputPath -Force | Out-Null
-    Write-Host "Ausgabeverzeichnis erstellt: $OutputPath" -ForegroundColor Green
+    Write-Host "Output directory created: $OutputPath" -ForegroundColor Green
 }
 
-# csc.exe finden (C# Compiler)
+# Find csc.exe (C# Compiler)
 function Find-CSC {
-    # Mögliche Pfade für csc.exe (priorisiert nach .NET Framework Version)
+    # Possible paths for csc.exe (prioritized by .NET Framework version)
     $possiblePaths = @(
         # .NET Framework 4.8
         "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\csc.exe",
@@ -72,7 +72,7 @@ function Find-CSC {
         }
     }
 
-    # Fallback: über PATH suchen
+    # Fallback: search via PATH
     $cscInPath = Get-Command csc.exe -ErrorAction SilentlyContinue
     if ($cscInPath) {
         return $cscInPath.Source
@@ -85,29 +85,29 @@ $cscPath = Find-CSC
 
 if (-not $cscPath) {
     Write-Error @"
-C# Compiler (csc.exe) nicht gefunden!
+C# Compiler (csc.exe) not found!
 
-Bitte installieren Sie eine der folgenden Komponenten:
-1. .NET Framework 4.7+ SDK (empfohlen)
-2. Visual Studio 2019/2022 (Community, Professional, oder Enterprise)
+Please install one of the following components:
+1. .NET Framework 4.7+ SDK (recommended)
+2. Visual Studio 2019/2022 (Community, Professional, or Enterprise)
 3. Visual Studio Build Tools 2019/2022
 
 Download: https://visualstudio.microsoft.com/downloads/
 "@
 }
 
-Write-Host "C# Compiler gefunden: $cscPath" -ForegroundColor Green
+Write-Host "C# Compiler found: $cscPath" -ForegroundColor Green
 
-# Compiler-Parameter
+# Compiler parameters
 $compilerArgs = @(
-    '/target:library',              # DLL erstellen
-    '/platform:anycpu',             # Beliebige CPU-Architektur
-    '/optimize+',                   # Optimierungen aktivieren
-    "/out:`"$outputDll`"",          # Ausgabedatei
-    "`"$sourceFile`""               # Quelldatei
+    '/target:library',              # Create DLL
+    '/platform:anycpu',             # Any CPU architecture
+    '/optimize+',                   # Enable optimizations
+    "/out:`"$outputDll`"",          # Output file
+    "`"$sourceFile`""               # Source file
 )
 
-# Debug-spezifische Parameter
+# Debug-specific parameters
 if ($Configuration -eq 'Debug') {
     $compilerArgs += '/debug:full'
     $compilerArgs += '/define:DEBUG'
@@ -115,18 +115,18 @@ if ($Configuration -eq 'Debug') {
     $compilerArgs += '/debug:pdbonly'
 }
 
-# Alte Dateien löschen
+# Delete old files
 if (Test-Path $outputDll) {
     Remove-Item $outputDll -Force
-    Write-Host "Alte DLL gelöscht" -ForegroundColor Yellow
+    Write-Host "Old DLL deleted" -ForegroundColor Yellow
 }
 if (Test-Path $outputPdb) {
     Remove-Item $outputPdb -Force
 }
 
-# Kompilieren
-Write-Host "`nKompiliere..." -ForegroundColor Cyan
-Write-Host "Befehl: csc $($compilerArgs -join ' ')" -ForegroundColor Gray
+# Compile
+Write-Host "`nCompiling..." -ForegroundColor Cyan
+Write-Host "Command: csc $($compilerArgs -join ' ')" -ForegroundColor Gray
 
 try {
     $process = Start-Process -FilePath $cscPath `
@@ -141,67 +141,67 @@ try {
     $stderr = Get-Content (Join-Path $env:TEMP 'csc_stderr.txt') -Raw -ErrorAction SilentlyContinue
 
     if ($process.ExitCode -ne 0) {
-        Write-Host "`nCompiler-Ausgabe:" -ForegroundColor Red
+        Write-Host "`nCompiler output:" -ForegroundColor Red
         if ($stdout) { Write-Host $stdout }
         if ($stderr) { Write-Host $stderr -ForegroundColor Red }
-        Write-Error "Kompilierung fehlgeschlagen (ExitCode: $($process.ExitCode))"
+        Write-Error "Compilation failed (ExitCode: $($process.ExitCode))"
     }
 
-    # Warnungen anzeigen
+    # Show warnings
     if ($stdout -and $stdout.Trim()) {
-        Write-Host "`nCompiler-Warnungen:" -ForegroundColor Yellow
+        Write-Host "`nCompiler warnings:" -ForegroundColor Yellow
         Write-Host $stdout
     }
 
 } catch {
-    Write-Error "Fehler beim Kompilieren: $($_.Exception.Message)"
+    Write-Error "Error during compilation: $($_.Exception.Message)"
 }
 
-# Erfolgsmeldung
+# Success message
 if (Test-Path $outputDll) {
     $dllInfo = Get-Item $outputDll
-    Write-Host "`n✓ Kompilierung erfolgreich!" -ForegroundColor Green
-    Write-Host "  Datei: $outputDll" -ForegroundColor Gray
-    Write-Host "  Größe: $([math]::Round($dllInfo.Length / 1KB, 2)) KB" -ForegroundColor Gray
-    Write-Host "  Erstellt: $($dllInfo.LastWriteTime)" -ForegroundColor Gray
+    Write-Host "`n✓ Compilation successful!" -ForegroundColor Green
+    Write-Host "  File: $outputDll" -ForegroundColor Gray
+    Write-Host "  Size: $([math]::Round($dllInfo.Length / 1KB, 2)) KB" -ForegroundColor Gray
+    Write-Host "  Created: $($dllInfo.LastWriteTime)" -ForegroundColor Gray
 
-    # Assembly-Info auslesen
+    # Load assembly info
     try {
         Add-Type -Path $outputDll -ErrorAction SilentlyContinue
-        Write-Host "`n✓ DLL erfolgreich geladen (Test)" -ForegroundColor Green
+        Write-Host "`n✓ DLL loaded successfully (test)" -ForegroundColor Green
     } catch {
-        Write-Warning "DLL konnte nicht geladen werden: $($_.Exception.Message)"
+        Write-Warning "Could not load DLL: $($_.Exception.Message)"
     }
 
-    # Kopiere nach C:\Local\MonitorFix\deploy\Files für portable Deployment
-    Write-Host "`nKopiere DLL nach C:\Local\MonitorFix\deploy\Files..." -ForegroundColor Cyan
+    # Copy to C:\Local\MonitorFix\deploy\Files for portable deployment
+    Write-Host "`nCopying DLL to C:\Local\MonitorFix\deploy\Files..." -ForegroundColor Cyan
     $deployPath = "C:\Local\MonitorFix\deploy\Files"
     $deployDll = Join-Path $deployPath "DisplayUtilLive.dll"
 
     try {
         if (-not (Test-Path $deployPath)) {
             New-Item -ItemType Directory -Path $deployPath -Force | Out-Null
-            Write-Host "Verzeichnis erstellt: $deployPath" -ForegroundColor Green
+            Write-Host "Directory created: $deployPath" -ForegroundColor Green
         }
 
         Copy-Item -Path $outputDll -Destination $deployDll -Force -ErrorAction Stop
-        Write-Host "✓ DLL kopiert nach: $deployDll" -ForegroundColor Green
+        Write-Host "✓ DLL copied to: $deployDll" -ForegroundColor Green
 
-        # PDB auch kopieren (falls vorhanden)
+        # Also copy PDB (if present)
         if (Test-Path $outputPdb) {
             Copy-Item -Path $outputPdb -Destination (Join-Path $deployPath "DisplayUtilLive.pdb") -Force -ErrorAction SilentlyContinue
         }
 
     } catch {
-        Write-Warning "Fehler beim Kopieren nach C:\Local\MonitorFix\deploy\Files: $($_.Exception.Message)"
-        Write-Warning "Möglicherweise sind Admin-Rechte erforderlich."
+        Write-Warning "Error copying to C:\Local\MonitorFix\deploy\Files: $($_.Exception.Message)"
+        Write-Warning "Administrator rights may be required."
     }
 
-    Write-Host "`nNächste Schritte:" -ForegroundColor Cyan
-    Write-Host "  1. DLL testen: .\Test-DLL.ps1" -ForegroundColor Gray
-    Write-Host "  2. Hertz-Skript ausführen: .\Hertz.ps1 60" -ForegroundColor Gray
-    Write-Host "  3. In baramundi-Paket kopieren (falls benötigt)" -ForegroundColor Gray
+    Write-Host "`nNext steps:" -ForegroundColor Cyan
+    Write-Host "  1. Test DLL: .\Test-DLL.ps1" -ForegroundColor Gray
+    Write-Host "  2. Run Hertz script: .\Hertz.ps1 60" -ForegroundColor Gray
+    Write-Host "  3. Copy to baramundi package (if needed)" -ForegroundColor Gray
 
 } else {
-    Write-Error "DLL wurde nicht erstellt: $outputDll"
+    Write-Error "DLL was not created: $outputDll"
 }

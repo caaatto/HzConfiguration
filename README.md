@@ -16,7 +16,7 @@ Portable DLL for changing monitor refresh rates on Windows (Intel, NVIDIA, AMD, 
 
 ### Option 1: Use Hertz.ps1 (Easiest)
 
-The `Hertz.ps1` script automatically loads the DLL from `C:\Local\Files` and sets the refresh rate:
+The `Hertz.ps1` script automatically loads the DLL from `C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files` and sets the refresh rate:
 
 ```powershell
 # Set all monitors to 60 Hz
@@ -26,13 +26,13 @@ The `Hertz.ps1` script automatically loads the DLL from `C:\Local\Files` and set
 .\Hertz.ps1 144
 ```
 
-**Note:** The DLL must be in `C:\Local\Files\DisplayUtilLive.dll` (see Build section below).
+**Note:** The DLL must be in `C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files\DisplayUtilLive.dll` (see Build section below).
 
 ### Option 2: Use DLL Directly
 
 ```powershell
-# Load DLL from C:\Local\Files
-Add-Type -Path "C:\Local\Files\DisplayUtilLive.dll"
+# Load DLL from C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files
+Add-Type -Path "C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files\DisplayUtilLive.dll"
 
 # View current configuration
 [DisplayUtilLive]::GetCurrentStatus()
@@ -59,7 +59,7 @@ Build.bat
 
 **Note:** All build methods automatically copy the DLL to:
 - `.\bin\DisplayUtilLive.dll` (local build output)
-- `C:\Local\Files\DisplayUtilLive.dll` (portable deployment location)
+- `C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files\DisplayUtilLive.dll` (portable deployment location)
 
 ---
 
@@ -97,7 +97,7 @@ HzConfiguration/
 
 **Deployment Location:**
 ```
-C:\Local\Files\
+C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files\
 └── DisplayUtilLive.dll         # DLL for portable use (auto-copied during build)
 ```
 
@@ -176,16 +176,16 @@ The DLL works on any Windows system without installing .NET Framework (it's buil
 
 **Recommended portable location:**
 ```powershell
-# DLL is automatically deployed to C:\Local\Files during build
+# DLL is automatically deployed to C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files during build
 # Use Hertz.ps1 which loads from this location:
 .\Hertz.ps1 60
 ```
 
 **Manual deployment:**
 ```powershell
-# 1. Copy bin/DisplayUtilLive.dll to C:\Local\Files on target machine
+# 1. Copy bin/DisplayUtilLive.dll to C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files on target machine
 # 2. Run from any location
-Add-Type -Path "C:\Local\Files\DisplayUtilLive.dll"
+Add-Type -Path "C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files\DisplayUtilLive.dll"
 [DisplayUtilLive]::SetAllMonitorsTo(60)
 ```
 
@@ -220,24 +220,24 @@ This creates `.\deploy\` with all files ready for baramundi deployment.
 
 **2. Upload to baramundi:**
 - Upload contents of `.\deploy\` to baramundi server
-- Configure File-Deploy: `deploy\*` → `C:\Local\`
+- Configure File-Deploy: `deploy\*` → `C:\Local\MonitorFix\deploy\`
 
 **3. Create Execute Job:**
 ```powershell
 # Option A: Single combined job
-powershell.exe -ExecutionPolicy Bypass -File "C:\Local\Run-All.ps1" -Hz 60
+powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\Run-All.ps1" -Hz 60
 
 # Option B: Three separate jobs (recommended)
-Job 1: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\01_registry.ps1" -Hz 60
-Job 2: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\02_gpu_change.ps1" -Hz 60
-Job 3: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\03_displaylink_reload.ps1" -Hz 60
+Job 1: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\01_registry.ps1" -Hz 60
+Job 2: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\02_gpu_change.ps1" -Hz 60
+Job 3: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\03_displaylink_reload.ps1" -Hz 60
 ```
 
 **All jobs:** Run as System, Admin: Yes
 
 ### Scripts Included
 
-All scripts are in `.\baramundi\` and work with fixed paths under `C:\Local\`:
+All scripts are in `.\baramundi\` and work with fixed paths under `C:\Local\MonitorFix\deploy\`:
 
 - **01_registry.ps1** - Sets DisplayLink registry values
 - **02_gpu_change.ps1** - Changes refresh rates (main script)
@@ -246,7 +246,7 @@ All scripts are in `.\baramundi\` and work with fixed paths under `C:\Local\`:
 
 ### Features
 
-✅ **Portable** - Uses fixed path `C:\Local\Files\DisplayUtilLive.dll`
+✅ **Portable** - Uses fixed path `C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files\DisplayUtilLive.dll`
 ✅ **No search logic** - baramundi handles file deployment
 ✅ **Clear exit codes** - 0=Success, 1-3=Error codes for monitoring
 ✅ **Universal** - Works with Intel, NVIDIA, AMD, DisplayLink
