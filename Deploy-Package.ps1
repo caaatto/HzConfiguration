@@ -158,24 +158,24 @@ Documentation:
 
 ### File Deployment (Baustein: File-Deploy)
 
-Deploy all files from this package to target path C:\Local\
+Deploy all files from this package to target path C:\Local\MonitorFix\deploy\
 
 Source -> Target mapping:
-  Files\DisplayUtilLive.dll -> C:\Local\Files\DisplayUtilLive.dll
-  01_registry.ps1 -> C:\Local\01_registry.ps1
-  02_gpu_change.ps1 -> C:\Local\02_gpu_change.ps1
-  03_displaylink_reload.ps1 -> C:\Local\03_displaylink_reload.ps1
-  Run-All.ps1 -> C:\Local\Run-All.ps1
+  Files\DisplayUtilLive.dll -> C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll
+  01_registry.ps1 -> C:\Local\MonitorFix\deploy\01_registry.ps1
+  02_gpu_change.ps1 -> C:\Local\MonitorFix\deploy\02_gpu_change.ps1
+  03_displaylink_reload.ps1 -> C:\Local\MonitorFix\deploy\03_displaylink_reload.ps1
+  Run-All.ps1 -> C:\Local\MonitorFix\deploy\Run-All.ps1
 
 ### Script Execution (Baustein: Execute)
 
 Option A - Three separate jobs:
-  Job 1: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\01_registry.ps1" -Hz 60
-  Job 2: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\02_gpu_change.ps1" -Hz 60
-  Job 3: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\03_displaylink_reload.ps1" -Hz 60
+  Job 1: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\01_registry.ps1" -Hz 60
+  Job 2: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\02_gpu_change.ps1" -Hz 60
+  Job 3: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\03_displaylink_reload.ps1" -Hz 60
 
 Option B - Single combined job:
-  Job: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\Run-All.ps1" -Hz 60
+  Job: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\Run-All.ps1" -Hz 60
 
 All jobs:
   - Run as: System
@@ -184,18 +184,18 @@ All jobs:
 
 ## Quick Test
 
-After deployment to C:\Local, test on a client:
+After deployment to C:\Local\MonitorFix\deploy, test on a client:
 
 ``````powershell
 # Check files
-Test-Path "C:\Local\Files\DisplayUtilLive.dll"
-Test-Path "C:\Local\02_gpu_change.ps1"
+Test-Path "C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll"
+Test-Path "C:\Local\MonitorFix\deploy\02_gpu_change.ps1"
 
 # Run (requires admin)
-C:\Local\Run-All.ps1 -Hz 60
+C:\Local\MonitorFix\deploy\Run-All.ps1 -Hz 60
 
 # Verify
-Add-Type -Path "C:\Local\Files\DisplayUtilLive.dll"
+Add-Type -Path "C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll"
 [DisplayUtilLive]::GetCurrentStatus()
 ``````
 

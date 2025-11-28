@@ -173,9 +173,9 @@ if (Test-Path $outputDll) {
         Write-Warning "DLL konnte nicht geladen werden: $($_.Exception.Message)"
     }
 
-    # Kopiere nach C:\Local\Files für portable Deployment
-    Write-Host "`nKopiere DLL nach C:\Local\Files..." -ForegroundColor Cyan
-    $deployPath = "C:\Local\Files"
+    # Kopiere nach C:\Local\MonitorFix\deploy\Files für portable Deployment
+    Write-Host "`nKopiere DLL nach C:\Local\MonitorFix\deploy\Files..." -ForegroundColor Cyan
+    $deployPath = "C:\Local\MonitorFix\deploy\Files"
     $deployDll = Join-Path $deployPath "DisplayUtilLive.dll"
 
     try {
@@ -193,7 +193,7 @@ if (Test-Path $outputDll) {
         }
 
     } catch {
-        Write-Warning "Fehler beim Kopieren nach C:\Local\Files: $($_.Exception.Message)"
+        Write-Warning "Fehler beim Kopieren nach C:\Local\MonitorFix\deploy\Files: $($_.Exception.Message)"
         Write-Warning "Möglicherweise sind Admin-Rechte erforderlich."
     }
 

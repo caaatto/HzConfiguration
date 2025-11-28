@@ -20,7 +20,7 @@
 .NOTES
     DLL Search Paths (in order):
     1. $PSScriptRoot\..\bin\DisplayUtilLive.dll (relative to script)
-    2. C:\Local\Files\DisplayUtilLive.dll (portable deployment location)
+    2. C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll (portable deployment location)
     3. $env:ProgramData\baramundi\Files\HzConfig\bin\DisplayUtilLive.dll
 
     Exit Codes:
@@ -42,15 +42,15 @@ Write-Output "=== GPU Refresh Rate Change (Step 2/3) ==="
 Write-Output "Target frequency: $Hz Hz"
 Write-Output ""
 
-# DLL path (deployed by baramundi to C:\Local)
-$dllPath = "C:\Local\Files\DisplayUtilLive.dll"
+# DLL path (deployed by baramundi to C:\Local\MonitorFix\deploy\Files)
+$dllPath = "C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll"
 
 Write-Output "DLL path: $dllPath"
 
 if (-not (Test-Path $dllPath)) {
     Write-Output ""
     Write-Output "[ERROR] DisplayUtilLive.dll not found at: $dllPath"
-    Write-Output "Please ensure baramundi deployed the DLL to C:\Local\Files\"
+    Write-Output "Please ensure baramundi deployed the DLL to C:\Local\MonitorFix\deploy\Files\"
     exit 1
 }
 
