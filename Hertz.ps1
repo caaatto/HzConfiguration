@@ -1,10 +1,10 @@
 ﻿<#
 .SYNOPSIS
-    Setzt die Bildwiederholrate (Hz) live für alle Monitore.
+    Sets the refresh rate (Hz) live for all monitors.
 .DESCRIPTION
-    - GPU-Monitore (Intel/NVIDIA/AMD) werden auf den aktuellen Modus mit gewünschter Hz umgestellt (wenn verfügbar).
-    - DisplayLink-Monitore: Registry-Eintrag "DisplayFrequency" wird gesetzt und das Gerät wird kurz deaktiviert/aktiviert (Live-Reload).
-    - Vermeidet Add-Type Konflikte und C#-String-Interpolation-Probleme.
+    - GPU monitors (Intel/NVIDIA/AMD) are switched to current mode with desired Hz (if available).
+    - DisplayLink monitors: Registry entry "DisplayFrequency" is set and device is briefly disabled/enabled (live reload).
+    - Avoids Add-Type conflicts and C# string interpolation issues.
 .EXAMPLE
     .\Hertz.ps1 60
 #>
@@ -12,42 +12,42 @@
 param([int]$refresh = 60)
 
 Write-Host "==============================" -ForegroundColor Cyan
-Write-Host "  Erzwinge $refresh Hz auf allen Monitoren (LIVE)" -ForegroundColor Cyan
+Write-Host "  Forcing $refresh Hz on all monitors (LIVE)" -ForegroundColor Cyan
 Write-Host "==============================" -ForegroundColor Cyan
 
 # -----------------------------
-# 0. DLL laden von C:\Local\MonitorFix\deploy\Files
+# 0. Load DLL from C:\Local\MonitorFix\deploy\Files
 # -----------------------------
 $dllPath = "C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll"
 
-# Prüfen, ob die DLL existiert
+# Check if DLL exists
 if (-not (Test-Path $dllPath)) {
-    Write-Host "FEHLER: DLL nicht gefunden!" -ForegroundColor Red
-    Write-Host "Erwartet: $dllPath" -ForegroundColor Yellow
-    Write-Host "`nBitte sicherstellen, dass:" -ForegroundColor Yellow
-    Write-Host "  1. Die DLL kompiliert wurde (Build-DLL.ps1 oder Build.bat)" -ForegroundColor Gray
-    Write-Host "  2. Die DLL nach C:\Local\MonitorFix\deploy\Files kopiert wurde" -ForegroundColor Gray
+    Write-Host "ERROR: DLL not found!" -ForegroundColor Red
+    Write-Host "Expected: $dllPath" -ForegroundColor Yellow
+    Write-Host "`nPlease ensure that:" -ForegroundColor Yellow
+    Write-Host "  1. The DLL was compiled (Build-DLL.ps1 or Build.bat)" -ForegroundColor Gray
+    Write-Host "  2. The DLL was copied to C:\Local\MonitorFix\deploy\Files" -ForegroundColor Gray
     exit 1
 }
 
-# Prüfen, ob der Typ bereits geladen ist
+# Check if type is already loaded
 $needAddType = $true
 try {
     $null = [DisplayUtilLive]
     $needAddType = $false
-    Write-Host "DLL bereits geladen — Add-Type übersprungen." -ForegroundColor DarkYellow
+    Write-Host "DLL already loaded — Add-Type skipped." -ForegroundColor DarkYellow
 } catch {
     $needAddType = $true
 }
 
-# DLL laden
+# Load DLL
 if ($needAddType) {
     try {
-        Write-Host "Lade DLL von: $dllPath" -ForegroundColor Cyan
+        Write-Host "Loading DLL from: $dllPath" -ForegroundColor Cyan
         Add-Type -Path $dllPath -ErrorAction Stop
-        Write-Host "✓ DLL erfolgreich geladen" -ForegroundColor Green
+        Write-Host "✓ DLL loaded successfully" -ForegroundColor Green
     } catch {
-        Write-Host "FEHLER beim Laden der DLL: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "ERROR loading DLL: $($_.Exception.Message)" -ForegroundColor Red
         exit 1
     }
 }
@@ -55,28 +55,28 @@ if ($needAddType) {
 try {
     [DisplayUtilLive]::SetGPUMonitorsTo($refresh)
 } catch {
-    Write-Host "Fehler beim Setzen der GPU-Monitore: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "Error setting GPU monitors: $($_.Exception.Message)" -ForegroundColor Red
 }
 
 
-# Suche DisplayLink über Win32_VideoController
+# Search for DisplayLink via Win32_VideoController
 $displaylink = Get-CimInstance Win32_VideoController | Where-Object { $_.Name -like "*DisplayLink*" }
 
 if (!$displaylink -or $displaylink.Count -eq 0) {
-    Write-Host "`nKeine DisplayLink-Video-Controller gefunden." -ForegroundColor Yellow
+    Write-Host "`nNo DisplayLink video controllers found." -ForegroundColor Yellow
 } else {
-    Write-Host "`nDisplayLink-Video-Controller gefunden:" -ForegroundColor Cyan
+    Write-Host "`nDisplayLink video controllers found:" -ForegroundColor Cyan
     $displaylink | ForEach-Object { Write-Host " → $($_.Name)  PNP: $($_.PNPDeviceID)" }
 
     foreach ($dev in $displaylink) {
-        # PNPDeviceID kann z.B. "USB\VID_17E9&PID_..." sein
+        # PNPDeviceID can be e.g. "USB\VID_17E9&PID_..."
         $pnp = $dev.PNPDeviceID
-        # Registry-Pfad zur Device-Parameters für den Enum-Eintrag
+        # Registry path to Device Parameters for the Enum entry
         $regPath = "HKLM:\SYSTEM\CurrentControlSet\Enum\$pnp`\\Device Parameters"
 
-        # Manche Systeme haben andere Pfadstrukturen - versuche robust:
+        # Some systems have different path structures - try robustly:
         if (!(Test-Path $regPath)) {
-            # versuchen ohne "\Device Parameters" direkt die Enum-Node zu finden und dranhängen
+            # Try to find the Enum node directly and append "\Device Parameters"
             $enumBase = "HKLM:\SYSTEM\CurrentControlSet\Enum\$pnp"
             if (Test-Path $enumBase) {
                 $regPath = Join-Path $enumBase "Device Parameters"
@@ -84,32 +84,32 @@ if (!$displaylink -or $displaylink.Count -eq 0) {
         }
 
         if (Test-Path $regPath) {
-            Write-Host "→ Setze Registry für $($dev.Name) auf $refresh Hz ..."
+            Write-Host "→ Setting registry for $($dev.Name) to $refresh Hz ..."
             try {
                 Set-ItemProperty -Path $regPath -Name "DisplayFrequency" -Value $refresh -Type DWord -Force
-                Write-Host "Registry aktualisiert."
+                Write-Host "Registry updated."
             } catch {
-                Write-Host "Fehler beim Schreiben der Registry: $($_.Exception.Message)" -ForegroundColor Red
+                Write-Host "Error writing to registry: $($_.Exception.Message)" -ForegroundColor Red
             }
         } else {
-            Write-Host "Registry-Pfad nicht gefunden für $($dev.Name): $regPath" -ForegroundColor DarkYellow
+            Write-Host "Registry path not found for $($dev.Name): $regPath" -ForegroundColor DarkYellow
         }
 
-        # Live reload: Deaktivieren / Aktivieren des PnP-Geräts
-        Write-Host "→ Lade DisplayLink neu: $($dev.Name) ..."
+        # Live reload: Disable / Enable the PnP device
+        Write-Host "→ Reloading DisplayLink: $($dev.Name) ..."
         try {
-            # Disable/Enable mit PNPDeviceID. Erfordert Admin-Rechte.
+            # Disable/Enable with PNPDeviceID. Requires admin rights.
             Disable-PnpDevice -InstanceId $pnp -Confirm:$false -ErrorAction Stop
             Start-Sleep -Milliseconds 1000
             Enable-PnpDevice  -InstanceId $pnp -Confirm:$false -ErrorAction Stop
             Start-Sleep -Milliseconds 800
-            Write-Host "  Live-Reload erfolgreich." -ForegroundColor Green
+            Write-Host "  Live reload successful." -ForegroundColor Green
         } catch {
-            Write-Host "Fehler beim Neu-Laden (Disable/Enable) von $($dev.Name): $($_.Exception.Message)" -ForegroundColor Red
-            Write-Host "Hinweis: Stelle sicher, dass die PowerShell als Administrator ausgeführt wird."
+            Write-Host "Error reloading (Disable/Enable) $($dev.Name): $($_.Exception.Message)" -ForegroundColor Red
+            Write-Host "Note: Ensure that PowerShell is running as Administrator."
         }
     }
 }
 
-Write-Host "`nAlle erreichbaren Monitore wurden versucht auf $refresh Hz zu setzen." -ForegroundColor Green
-Write-Host "Falls einige Monitore noch 70 Hz anzeigen: starte den PC neu." -ForegroundColor Yellow
+Write-Host "`nAll reachable monitors have been attempted to be set to $refresh Hz." -ForegroundColor Green
+Write-Host "If some monitors still show 70 Hz: restart the PC." -ForegroundColor Yellow
