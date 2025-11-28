@@ -16,9 +16,9 @@ Write-Host "  Erzwinge $refresh Hz auf allen Monitoren (LIVE)" -ForegroundColor 
 Write-Host "==============================" -ForegroundColor Cyan
 
 # -----------------------------
-# 0. DLL laden von C:\Local\Files
+# 0. DLL laden von C:\Local\MonitorFix\deploy\Files
 # -----------------------------
-$dllPath = "C:\Local\Files\DisplayUtilLive.dll"
+$dllPath = "C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll"
 
 # Prüfen, ob die DLL existiert
 if (-not (Test-Path $dllPath)) {
@@ -26,7 +26,7 @@ if (-not (Test-Path $dllPath)) {
     Write-Host "Erwartet: $dllPath" -ForegroundColor Yellow
     Write-Host "`nBitte sicherstellen, dass:" -ForegroundColor Yellow
     Write-Host "  1. Die DLL kompiliert wurde (Build-DLL.ps1 oder Build.bat)" -ForegroundColor Gray
-    Write-Host "  2. Die DLL nach C:\Local\Files kopiert wurde" -ForegroundColor Gray
+    Write-Host "  2. Die DLL nach C:\Local\MonitorFix\deploy\Files kopiert wurde" -ForegroundColor Gray
     exit 1
 }
 

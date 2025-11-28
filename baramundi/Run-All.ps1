@@ -9,8 +9,8 @@
     2. 02_gpu_change.ps1 - Change GPU refresh rates
     3. 03_displaylink_reload.ps1 - Reload DisplayLink devices
 
-    All scripts are expected to be in C:\Local\.
-    DLL is expected at C:\Local\Files\DisplayUtilLive.dll.
+    All scripts are expected to be in C:\Local\MonitorFix\deploy\.
+    DLL is expected at C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll.
 
     Run as: System
     Timeout: 180s
@@ -49,7 +49,7 @@ Write-Output ""
 Write-Output "--- STEP 1/3: DisplayLink Registry Setup ---"
 Write-Output ""
 
-$step1Path = "C:\Local\01_registry.ps1"
+$step1Path = "C:\Local\MonitorFix\deploy\01_registry.ps1"
 if (-not (Test-Path $step1Path)) {
     Write-Output "[ERROR] Step 1 script not found: $step1Path"
     exit 1
@@ -78,7 +78,7 @@ try {
 Write-Output "--- STEP 2/3: GPU Refresh Rate Change ---"
 Write-Output ""
 
-$step2Path = "C:\Local\02_gpu_change.ps1"
+$step2Path = "C:\Local\MonitorFix\deploy\02_gpu_change.ps1"
 if (-not (Test-Path $step2Path)) {
     Write-Output "[ERROR] Step 2 script not found: $step2Path"
     exit 2
@@ -107,7 +107,7 @@ try {
 Write-Output "--- STEP 3/3: DisplayLink Device Reload ---"
 Write-Output ""
 
-$step3Path = "C:\Local\03_displaylink_reload.ps1"
+$step3Path = "C:\Local\MonitorFix\deploy\03_displaylink_reload.ps1"
 if (-not (Test-Path $step3Path)) {
     Write-Output "[ERROR] Step 3 script not found: $step3Path"
     exit 3
