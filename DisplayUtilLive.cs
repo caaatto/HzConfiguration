@@ -178,6 +178,54 @@ public static class DisplayUtilLive
     }
 
     /// <summary>
+    /// Finds the closest supported refresh rate to the requested one
+    /// </summary>
+    private static int FindClosestSupportedFrequency(string deviceName, int requestedHz, int currentWidth, int currentHeight, int currentBpp, out bool exactMatch)
+    {
+        DEVMODE mode = new DEVMODE();
+        mode.dmSize = (short)Marshal.SizeOf(mode);
+        int modeIndex = 0;
+
+        HashSet<int> supportedFrequencies = new HashSet<int>();
+
+        // Enumerate all modes and collect frequencies that match current resolution/bpp
+        while (EnumDisplaySettings(deviceName, modeIndex, ref mode))
+        {
+            if (mode.dmPelsWidth == currentWidth &&
+                mode.dmPelsHeight == currentHeight &&
+                mode.dmBitsPerPel == currentBpp)
+            {
+                supportedFrequencies.Add(mode.dmDisplayFrequency);
+            }
+            modeIndex++;
+        }
+
+        // Check for exact match
+        if (supportedFrequencies.Contains(requestedHz))
+        {
+            exactMatch = true;
+            return requestedHz;
+        }
+
+        // Find closest match within ±3 Hz tolerance
+        exactMatch = false;
+        int closestHz = -1;
+        int smallestDiff = int.MaxValue;
+
+        foreach (int freq in supportedFrequencies)
+        {
+            int diff = Math.Abs(freq - requestedHz);
+            if (diff <= 3 && diff < smallestDiff)
+            {
+                closestHz = freq;
+                smallestDiff = diff;
+            }
+        }
+
+        return closestHz;
+    }
+
+    /// <summary>
     /// Sets the refresh rate for a specific monitor
     /// </summary>
     private static bool SetMonitorRefreshRate(string deviceName, int hz, out string message)
@@ -192,6 +240,8 @@ public static class DisplayUtilLive
             return false;
         }
 
+        int originalFreq = currentMode.dmDisplayFrequency;
+
         // Check if desired frequency is already set
         if (currentMode.dmDisplayFrequency == hz)
         {
@@ -199,9 +249,24 @@ public static class DisplayUtilLive
             return true;
         }
 
-        // Set new frequency
-        int originalFreq = currentMode.dmDisplayFrequency;
-        currentMode.dmDisplayFrequency = hz;
+        // Find closest supported frequency
+        bool exactMatch;
+        int targetHz = FindClosestSupportedFrequency(
+            deviceName,
+            hz,
+            currentMode.dmPelsWidth,
+            currentMode.dmPelsHeight,
+            currentMode.dmBitsPerPel,
+            out exactMatch);
+
+        if (targetHz == -1)
+        {
+            message = string.Format("{0} Hz → {1} Hz NOT supported (no close match found)", originalFreq, hz);
+            return false;
+        }
+
+        // Use the found frequency (might be slightly different, e.g., 59 instead of 60)
+        currentMode.dmDisplayFrequency = targetHz;
         currentMode.dmFields = DM_DISPLAYFREQUENCY | DM_PELSWIDTH | DM_PELSHEIGHT | DM_BITSPERPEL;
 
         // First test if the mode is supported
@@ -214,11 +279,11 @@ public static class DisplayUtilLive
 
         if (testResult != DISP_CHANGE_SUCCESSFUL)
         {
-            message = string.Format("{0} Hz → {1} Hz NOT supported (CDS_TEST failed)", originalFreq, hz);
+            message = string.Format("{0} Hz → {1} Hz NOT supported (CDS_TEST failed)", originalFreq, targetHz);
             return false;
         }
 
-        // Now actually change
+        // Now actually change with UPDATEREGISTRY to persist settings
         int changeResult = ChangeDisplaySettingsEx(
             deviceName,
             ref currentMode,
@@ -229,19 +294,33 @@ public static class DisplayUtilLive
         switch (changeResult)
         {
             case DISP_CHANGE_SUCCESSFUL:
-                message = string.Format("{0} Hz → {1} Hz successful", originalFreq, hz);
+                if (exactMatch)
+                {
+                    message = string.Format("{0} Hz → {1} Hz successful", originalFreq, targetHz);
+                }
+                else
+                {
+                    message = string.Format("{0} Hz → {1} Hz successful (requested {2} Hz, using closest match)", originalFreq, targetHz, hz);
+                }
                 return true;
 
             case DISP_CHANGE_RESTART:
-                message = string.Format("{0} Hz → {1} Hz requires restart", originalFreq, hz);
+                if (exactMatch)
+                {
+                    message = string.Format("{0} Hz → {1} Hz requires restart", originalFreq, targetHz);
+                }
+                else
+                {
+                    message = string.Format("{0} Hz → {1} Hz requires restart (requested {2} Hz, using closest match)", originalFreq, targetHz, hz);
+                }
                 return true; // Consider as success, but note
 
             case DISP_CHANGE_BADMODE:
-                message = string.Format("{0} Hz → {1} Hz invalid mode", originalFreq, hz);
+                message = string.Format("{0} Hz → {1} Hz invalid mode", originalFreq, targetHz);
                 return false;
 
             default:
-                message = string.Format("{0} Hz → {1} Hz error (code: {2})", originalFreq, hz, changeResult);
+                message = string.Format("{0} Hz → {1} Hz error (code: {2})", originalFreq, targetHz, changeResult);
                 return false;
         }
     }
