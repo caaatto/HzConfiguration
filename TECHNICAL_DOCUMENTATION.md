@@ -1,7 +1,7 @@
 # MonitorFix - Technical Documentation
 
-**Version:** 1.0
-**Date:** 2025-01-28
+**Version:** 1.2
+**Date:** 2026-03-12
 **Author:** catto
 
 ---
@@ -235,11 +235,17 @@ public static void SetAllMonitorsTo(int hz)
        ├─→ EnumDisplaySettings(ENUM_CURRENT_SETTINGS)
        │   └─→ Read current resolution/color depth
        │
+       ├─→ FindClosestSupportedFrequency()
+       │   ├─ Check for exact match (e.g., 60 Hz)
+       │   ├─ If not found: Search within ±3 Hz tolerance
+       │   │   (e.g., 59 Hz when 60 Hz requested)
+       │   └─ Return closest match or -1 if not found
+       │
        ├─→ Prepare DEVMODE:
        │   ├─ dmPelsWidth = current (e.g. 1920)
        │   ├─ dmPelsHeight = current (e.g. 1080)
        │   ├─ dmBitsPerPel = current (e.g. 32)
-       │   ├─ dmDisplayFrequency = hz (new!)
+       │   ├─ dmDisplayFrequency = targetHz (closest match!)
        │   └─ dmFields = DM_DISPLAYFREQUENCY | DM_PELSWIDTH |
        │                  DM_PELSHEIGHT | DM_BITSPERPEL
        │
@@ -248,8 +254,9 @@ public static void SetAllMonitorsTo(int hz)
        │   └─ Error → Exception
        │
        └─→ ChangeDisplaySettingsEx(CDS_UPDATEREGISTRY)
-           ├─ SUCCESSFUL → OK
-           └─ Error → Exception
+           ├─ SUCCESSFUL → [OK] Display changed
+           ├─ Note: CDS_UPDATEREGISTRY persists settings
+           └─ Error → [ERROR] Exception
 }
 ```
 
@@ -275,6 +282,102 @@ foreach (var display in displays)
 
 **Important:** Do not use `ChangeDisplaySettings()` (without "Ex") - this would reset all displays!
 
+#### Tolerance-Based Refresh Rate Matching
+
+Many displays report slightly different refresh rates than expected (e.g., 59.94 Hz instead of 60 Hz).
+The system implements a ±3 Hz tolerance to handle these cases:
+
+```csharp
+private static int FindClosestSupportedFrequency(
+    string deviceName, int requestedHz,
+    int currentWidth, int currentHeight, int currentBpp,
+    out bool exactMatch)
+{
+    // Enumerate all supported modes for current resolution
+    HashSet<int> supportedFrequencies = new HashSet<int>();
+    int modeIndex = 0;
+
+    while (true)
+    {
+        // IMPORTANT: Reinitialize DEVMODE on each iteration
+        DEVMODE mode = new DEVMODE();
+        mode.dmSize = (short)Marshal.SizeOf(mode);
+
+        if (!EnumDisplaySettings(deviceName, modeIndex, ref mode))
+            break;
+
+        if (mode.dmPelsWidth == currentWidth &&
+            mode.dmPelsHeight == currentHeight &&
+            mode.dmBitsPerPel == currentBpp)
+        {
+            supportedFrequencies.Add(mode.dmDisplayFrequency);
+        }
+        modeIndex++;
+    }
+
+    // 1. Check exact match first
+    if (supportedFrequencies.Contains(requestedHz))
+    {
+        exactMatch = true;
+        return requestedHz;
+    }
+
+    // 2. Find closest within ±3 Hz tolerance
+    exactMatch = false;
+    int closestHz = -1;
+    int smallestDiff = int.MaxValue;
+
+    foreach (int freq in supportedFrequencies)
+    {
+        int diff = Math.Abs(freq - requestedHz);
+        if (diff <= 3 && diff < smallestDiff)
+        {
+            closestHz = freq;
+            smallestDiff = diff;
+        }
+    }
+
+    return closestHz; // Returns -1 if no match found
+}
+```
+
+**Example:**
+- Requested: 60 Hz
+- Display supports: 59 Hz, 75 Hz, 120 Hz
+- Result: 59 Hz (within ±3 Hz tolerance)
+- User sees: "59 Hz → 59 Hz successful (requested 60 Hz, using closest match)"
+
+#### DEVMODE Structure Reinitialization
+
+**Critical for Windows API compatibility:**
+
+When enumerating display modes, the DEVMODE structure must be reinitialized on **each iteration**:
+
+```csharp
+// CORRECT approach (fixed in latest version)
+while (true)
+{
+    DEVMODE mode = new DEVMODE();           // ← New instance each time!
+    mode.dmSize = (short)Marshal.SizeOf(mode);
+
+    if (!EnumDisplaySettings(deviceName, modeIndex, ref mode))
+        break;
+    // ... process mode
+    modeIndex++;
+}
+
+// INCORRECT approach (causes issues with recent Windows updates)
+DEVMODE mode = new DEVMODE();
+mode.dmSize = (short)Marshal.SizeOf(mode);
+while (EnumDisplaySettings(deviceName, modeIndex, ref mode))
+{
+    // ... process mode (reuses same structure)
+    modeIndex++;
+}
+```
+
+This prevents compatibility issues with the latest Windows updates.
+
 #### Validation Before Change
 
 ```csharp
@@ -289,16 +392,21 @@ int result = ChangeDisplaySettingsEx(
 
 if (result == DISP_CHANGE_SUCCESSFUL)
 {
-    // 2. Only now actually change
+    // 2. Only now actually change and persist
     ChangeDisplaySettingsEx(
         deviceName,
         ref devMode,
         IntPtr.Zero,
-        CDS_UPDATEREGISTRY,  // ← Apply now
+        CDS_UPDATEREGISTRY,  // ← Apply and save to registry
         IntPtr.Zero
     );
 }
 ```
+
+**CDS_UPDATEREGISTRY Flag:**
+- Applies the change immediately
+- Saves settings to Windows registry
+- Ensures persistence across reboots and display reconnections
 
 ---
 
@@ -902,7 +1010,66 @@ Test-Path "HKLM:\SYSTEM\CurrentControlSet\Enum\USB\VID_17E9&PID_430C&MI_00\6&2a6
 
 ---
 
-### 9.4 baramundi-Specific Problems
+### 9.4 Refresh Rate Not Exact Match
+
+#### Problem: "60 Hz not supported" but display works at 59 Hz
+
+**Cause:** Display reports 59.94 Hz as 59 Hz, not 60 Hz
+
+**Solution (Automatic in v1.1+):**
+The system now automatically finds the closest supported frequency within ±3 Hz tolerance.
+
+**Manual Verification:**
+```powershell
+# List all supported modes for a display
+Add-Type -Path "C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll"
+[DisplayUtilLive]::ListSupportedModes("\\.\DISPLAY1")
+```
+
+**Output Example:**
+```
+Available modes for \\.\DISPLAY1:
+1920x1080 @ 59 Hz (32 bit)
+1920x1080 @ 75 Hz (32 bit)
+1920x1080 @ 120 Hz (32 bit)
+```
+
+**Result:**
+- Requesting 60 Hz → System uses 59 Hz automatically
+- User sees: "[OK] \\.\DISPLAY1: 60 Hz → 59 Hz successful (requested 60 Hz, using closest match)"
+
+---
+
+### 9.5 EnumDisplaySettings Fails After Windows Update
+
+#### Problem: Cannot enumerate display modes, DLL fails to load modes
+
+**Cause:** DEVMODE structure not reinitialized on each iteration (fixed in v1.2)
+
+**Symptom:**
+```
+EnumDisplaySettings failed
+Cannot list supported modes
+```
+
+**Solution:**
+Update to DisplayUtilLive.dll v1.2 or later, which properly reinitializes DEVMODE:
+
+```csharp
+// Each iteration gets a fresh DEVMODE instance
+while (true)
+{
+    DEVMODE mode = new DEVMODE();
+    mode.dmSize = (short)Marshal.SizeOf(mode);
+    if (!EnumDisplaySettings(deviceName, modeIndex, ref mode))
+        break;
+    // ...
+}
+```
+
+---
+
+### 9.6 baramundi-Specific Problems
 
 #### Problem: "Script not found"
 
@@ -972,39 +1139,65 @@ try {
 
 Currently: `SetAllMonitorsTo()` sets ALL to same frequency
 
-**Extension:** Individual frequencies
+**Extension:** Individual frequencies with tolerance-based matching
 
 ```csharp
 public static void SetMonitorFrequency(string deviceName, int hz)
 {
-    DEVMODE devMode = new DEVMODE();
-    devMode.dmSize = (ushort)Marshal.SizeOf(devMode);
+    DEVMODE currentMode = new DEVMODE();
+    currentMode.dmSize = (short)Marshal.SizeOf(currentMode);
 
     // Read current mode
-    if (!EnumDisplaySettings(deviceName, ENUM_CURRENT_SETTINGS, ref devMode))
+    if (!EnumDisplaySettings(deviceName, ENUM_CURRENT_SETTINGS, ref currentMode))
         throw new Exception($"Cannot read settings for {deviceName}");
 
-    // Change only frequency
-    devMode.dmDisplayFrequency = (uint)hz;
-    devMode.dmFields = DM_DISPLAYFREQUENCY | DM_PELSWIDTH | DM_PELSHEIGHT | DM_BITSPERPEL;
+    // Find closest supported frequency (with ±3 Hz tolerance)
+    bool exactMatch;
+    int targetHz = FindClosestSupportedFrequency(
+        deviceName,
+        hz,
+        currentMode.dmPelsWidth,
+        currentMode.dmPelsHeight,
+        currentMode.dmBitsPerPel,
+        out exactMatch);
+
+    if (targetHz == -1)
+        throw new Exception($"{deviceName}: {hz} Hz not supported (no close match found)");
+
+    // Set target frequency
+    currentMode.dmDisplayFrequency = targetHz;
+    currentMode.dmFields = DM_DISPLAYFREQUENCY | DM_PELSWIDTH | DM_PELSHEIGHT | DM_BITSPERPEL;
 
     // Test
-    int testResult = ChangeDisplaySettingsEx(deviceName, ref devMode, IntPtr.Zero, CDS_TEST, IntPtr.Zero);
+    int testResult = ChangeDisplaySettingsEx(deviceName, ref currentMode, IntPtr.Zero, CDS_TEST, IntPtr.Zero);
     if (testResult != DISP_CHANGE_SUCCESSFUL)
-        throw new Exception($"{deviceName}: Mode {hz} Hz not supported");
+        throw new Exception($"{deviceName}: Mode {targetHz} Hz not supported (test failed)");
 
-    // Apply
-    int result = ChangeDisplaySettingsEx(deviceName, ref devMode, IntPtr.Zero, CDS_UPDATEREGISTRY, IntPtr.Zero);
+    // Apply and persist
+    int result = ChangeDisplaySettingsEx(deviceName, ref currentMode, IntPtr.Zero, CDS_UPDATEREGISTRY, IntPtr.Zero);
     if (result != DISP_CHANGE_SUCCESSFUL)
         throw new Exception($"{deviceName}: ChangeDisplaySettingsEx failed");
+
+    Console.WriteLine(exactMatch
+        ? $"{deviceName}: Set to {targetHz} Hz"
+        : $"{deviceName}: Requested {hz} Hz, using closest match {targetHz} Hz");
 }
 ```
 
 **Usage:**
 ```powershell
+# Set different frequencies for different displays
 [DisplayUtilLive]::SetMonitorFrequency("\\.\DISPLAY1", 144)
 [DisplayUtilLive]::SetMonitorFrequency("\\.\DISPLAY2", 60)
+
+# The system will automatically find closest match if exact frequency not available
+# e.g., requesting 60 Hz might result in 59 Hz if that's the closest supported rate
 ```
+
+**Note:** This implementation includes:
+- Automatic tolerance-based matching (±3 Hz)
+- Proper DEVMODE reinitialization for Windows compatibility
+- CDS_UPDATEREGISTRY for persistence across reboots
 
 ---
 
@@ -1102,7 +1295,18 @@ foreach ($display in $displays) {
 
 | Version | Date | Changes |
 |---------|-------|------------|
-| 1.0 | 2025-01-28 | Initial version |
+| 1.2 | 2026-03-12 | Windows API compatibility updates |
+| | | - Fixed DEVMODE reinitialization for latest Windows updates |
+| | | - Added tolerance-based refresh rate matching (±3 Hz) |
+| | | - Implemented FindClosestSupportedFrequency() method |
+| | | - Added CDS_UPDATEREGISTRY for better persistence |
+| | | - Replaced emoji symbols with [OK] and [ERROR] |
+| 1.1 | 2025-12-15 | Refresh rate matching improvements |
+| | | - Added automatic fallback to closest supported frequency |
+| | | - Handles displays reporting 59.94 Hz as 59 Hz |
+| | | - Enhanced user feedback for frequency matching |
+| 1.0 | 2025-11-28 | Initial release |
+| | | - Full English translation |
 | | | - Path adjustment to C:\Local\MonitorFix\deploy\ |
 | | | - Complete technical documentation |
 | | | - baramundi integration documented |
