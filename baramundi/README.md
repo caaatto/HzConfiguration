@@ -15,7 +15,7 @@ C:\Local\MonitorFix\deploy\
 └── (optional: scripts can be located here or elsewhere)
 ```
 
-The scripts expect the DLL at: **`C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files\DisplayUtilLive.dll`**
+The scripts expect the DLL at: **`C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll`**
 
 ---
 
@@ -50,7 +50,7 @@ powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\01_regi
 ### 2. `02_gpu_change.ps1` - GPU Refresh Rate Change
 
 **What it does:**
-- Loads `DisplayUtilLive.dll` from `C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files\`
+- Loads `DisplayUtilLive.dll` from `C:\Local\MonitorFix\deploy\Files\`
 - Changes the refresh rate of all monitors (Intel, NVIDIA, AMD, DisplayLink)
 - **This is the main script**
 
@@ -185,7 +185,7 @@ Timeout: 180s
 
 | Source | Target |
 |--------|------|
-| `bin\DisplayUtilLive.dll` | `C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files\DisplayUtilLive.dll` |
+| `bin\DisplayUtilLive.dll` | `C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll` |
 | `baramundi\01_registry.ps1` | `C:\Local\MonitorFix\deploy\01_registry.ps1` |
 | `baramundi\02_gpu_change.ps1` | `C:\Local\MonitorFix\deploy\02_gpu_change.ps1` |
 | `baramundi\03_displaylink_reload.ps1` | `C:\Local\MonitorFix\deploy\03_displaylink_reload.ps1` |
@@ -231,7 +231,7 @@ Create multiple jobs with different `-Hz` parameters:
 1. Copy files to `C:\Local` (simulates baramundi):
 ```powershell
 # From your build directory
-Copy-Item ".\bin\DisplayUtilLive.dll" "C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files\DisplayUtilLive.dll" -Force
+Copy-Item ".\bin\DisplayUtilLive.dll" "C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll" -Force
 Copy-Item ".\baramundi\*.ps1" "C:\Local\MonitorFix\deploy\" -Force
 ```
 
@@ -246,7 +246,7 @@ cd C:\Local
 3. Check results:
 ```powershell
 # Display current monitor configuration
-Add-Type -Path "C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files\DisplayUtilLive.dll"
+Add-Type -Path "C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll"
 [DisplayUtilLive]::GetCurrentStatus()
 ```
 
@@ -257,8 +257,8 @@ Add-Type -Path "C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files\DisplayUtilLi
 ### Problem: "DLL not found"
 
 **Solution:**
-- Check if baramundi copied the DLL to `C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files\DisplayUtilLive.dll`
-- Execute on the client: `Test-Path "C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files\DisplayUtilLive.dll"`
+- Check if baramundi copied the DLL to `C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll`
+- Execute on the client: `Test-Path "C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll"`
 
 ### Problem: "Access denied" or "ChangeDisplaySettingsEx failed"
 
@@ -293,13 +293,13 @@ Add-Type -Path "C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files\DisplayUtilLi
 
 ## Advantages of This Solution
 
-✅ **No search logic:** Scripts use fixed paths under `C:\Local`
-✅ **No copy functions:** baramundi handles file deployment
-✅ **Portable:** Works on any Windows 10/11 without installation
-✅ **Robust:** Clear exit codes for baramundi monitoring
-✅ **Flexible:** Scripts can be executed individually or combined
-✅ **Safe:** Validation and error handling in every script
-✅ **Universal:** Supports Intel, NVIDIA, AMD, DisplayLink
+**No search logic:** Scripts use fixed paths under `C:\Local`
+**No copy functions:** baramundi handles file deployment
+**Portable:** Works on any Windows 10/11 without installation
+**Robust:** Clear exit codes for baramundi monitoring
+**Flexible:** Scripts can be executed individually or combined
+**Safe:** Validation and error handling in every script
+**Universal:** Supports Intel, NVIDIA, AMD, DisplayLink
 
 ---
 
@@ -317,4 +317,4 @@ Add-Type -Path "C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files\DisplayUtilLi
 
 ---
 
-**Ready for Deployment!** 🚀
+**Ready for Deployment!**

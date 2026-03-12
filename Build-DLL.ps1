@@ -160,7 +160,7 @@ try {
 # Success message
 if (Test-Path $outputDll) {
     $dllInfo = Get-Item $outputDll
-    Write-Host "`n✓ Compilation successful!" -ForegroundColor Green
+    Write-Host "`n[OK] Compilation successful!" -ForegroundColor Green
     Write-Host "  File: $outputDll" -ForegroundColor Gray
     Write-Host "  Size: $([math]::Round($dllInfo.Length / 1KB, 2)) KB" -ForegroundColor Gray
     Write-Host "  Created: $($dllInfo.LastWriteTime)" -ForegroundColor Gray
@@ -168,7 +168,7 @@ if (Test-Path $outputDll) {
     # Load assembly info
     try {
         Add-Type -Path $outputDll -ErrorAction SilentlyContinue
-        Write-Host "`n✓ DLL loaded successfully (test)" -ForegroundColor Green
+        Write-Host "`n[OK] DLL loaded successfully (test)" -ForegroundColor Green
     } catch {
         Write-Warning "Could not load DLL: $($_.Exception.Message)"
     }
@@ -185,7 +185,7 @@ if (Test-Path $outputDll) {
         }
 
         Copy-Item -Path $outputDll -Destination $deployDll -Force -ErrorAction Stop
-        Write-Host "✓ DLL copied to: $deployDll" -ForegroundColor Green
+        Write-Host "[OK] DLL copied to: $deployDll" -ForegroundColor Green
 
         # Also copy PDB (if present)
         if (Test-Path $outputPdb) {

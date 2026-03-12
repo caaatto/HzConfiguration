@@ -45,7 +45,7 @@ if ($needAddType) {
     try {
         Write-Host "Loading DLL from: $dllPath" -ForegroundColor Cyan
         Add-Type -Path $dllPath -ErrorAction Stop
-        Write-Host "✓ DLL loaded successfully" -ForegroundColor Green
+        Write-Host "[OK] DLL loaded successfully" -ForegroundColor Green
     } catch {
         Write-Host "ERROR loading DLL: $($_.Exception.Message)" -ForegroundColor Red
         exit 1
