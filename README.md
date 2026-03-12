@@ -16,7 +16,7 @@ Portable DLL for changing monitor refresh rates on Windows (Intel, NVIDIA, AMD, 
 
 ### Option 1: Use Hertz.ps1 (Easiest)
 
-The `Hertz.ps1` script automatically loads the DLL from `C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files` and sets the refresh rate:
+The `Hertz.ps1` script automatically loads the DLL from `C:\Local\MonitorFix\deploy\Files` and sets the refresh rate:
 
 ```powershell
 # Set all monitors to 60 Hz
@@ -26,13 +26,13 @@ The `Hertz.ps1` script automatically loads the DLL from `C:\Local\MonitorFix\dep
 .\Hertz.ps1 144
 ```
 
-**Note:** The DLL must be in `C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files\DisplayUtilLive.dll` (see Build section below).
+**Note:** The DLL must be in `C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll` (see Build section below).
 
 ### Option 2: Use DLL Directly
 
 ```powershell
-# Load DLL from C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files
-Add-Type -Path "C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files\DisplayUtilLive.dll"
+# Load DLL from C:\Local\MonitorFix\deploy\Files
+Add-Type -Path "C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll"
 
 # View current configuration
 [DisplayUtilLive]::GetCurrentStatus()
@@ -59,7 +59,7 @@ Build.bat
 
 **Note:** All build methods automatically copy the DLL to:
 - `.\bin\DisplayUtilLive.dll` (local build output)
-- `C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files\DisplayUtilLive.dll` (portable deployment location)
+- `C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll` (portable deployment location)
 
 ---
 
@@ -97,7 +97,7 @@ HzConfiguration/
 
 **Deployment Location:**
 ```
-C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files\
+C:\Local\MonitorFix\deploy\Files\
 └── DisplayUtilLive.dll         # DLL for portable use (auto-copied during build)
 ```
 
@@ -176,16 +176,16 @@ The DLL works on any Windows system without installing .NET Framework (it's buil
 
 **Recommended portable location:**
 ```powershell
-# DLL is automatically deployed to C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files during build
+# DLL is automatically deployed to C:\Local\MonitorFix\deploy\Files during build
 # Use Hertz.ps1 which loads from this location:
 .\Hertz.ps1 60
 ```
 
 **Manual deployment:**
 ```powershell
-# 1. Copy bin/DisplayUtilLive.dll to C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files on target machine
+# 1. Copy bin/DisplayUtilLive.dll to C:\Local\MonitorFix\deploy\Files on target machine
 # 2. Run from any location
-Add-Type -Path "C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files\DisplayUtilLive.dll"
+Add-Type -Path "C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll"
 [DisplayUtilLive]::SetAllMonitorsTo(60)
 ```
 
@@ -246,11 +246,11 @@ All scripts are in `.\baramundi\` and work with fixed paths under `C:\Local\Moni
 
 ### Features
 
-✅ **Portable** - Uses fixed path `C:\Local\MonitorFix\deploy\MonitorFix\deploy\Files\DisplayUtilLive.dll`
-✅ **No search logic** - baramundi handles file deployment
-✅ **Clear exit codes** - 0=Success, 1-3=Error codes for monitoring
-✅ **Universal** - Works with Intel, NVIDIA, AMD, DisplayLink
-✅ **Tested** - Ready for production deployment
+**Portable** - Uses fixed path `C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll`
+**No search logic** - baramundi handles file deployment
+**Clear exit codes** - 0=Success, 1-3=Error codes for monitoring
+**Universal** - Works with Intel, NVIDIA, AMD, DisplayLink
+**Tested** - Ready for production deployment
 
 ### Full Documentation
 
@@ -454,4 +454,4 @@ Write-Host "`nNew configuration:" -ForegroundColor Cyan
 
 ---
 
-**Enjoy your perfectly configured monitors!** 🖥️
+**Enjoy your perfectly configured monitors!**

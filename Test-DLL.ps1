@@ -72,7 +72,7 @@ Write-Host "  Änderung: $($dllInfo.LastWriteTime)" -ForegroundColor Gray
 Write-Host "`nLade DLL..." -ForegroundColor Cyan
 try {
     Add-Type -Path $DllPath -ErrorAction Stop
-    Write-Host "✓ DLL erfolgreich geladen" -ForegroundColor Green
+    Write-Host "[OK] DLL erfolgreich geladen" -ForegroundColor Green
 } catch {
     Write-Error "Fehler beim Laden der DLL: $($_.Exception.Message)"
 }
@@ -80,7 +80,7 @@ try {
 # Typ prüfen
 try {
     $type = [DisplayUtilLive]
-    Write-Host "✓ Typ 'DisplayUtilLive' gefunden" -ForegroundColor Green
+    Write-Host "[OK] Typ 'DisplayUtilLive' gefunden" -ForegroundColor Green
 
     # Methoden auflisten
     $methods = $type.GetMethods([System.Reflection.BindingFlags]::Public -bor [System.Reflection.BindingFlags]::Static) |
@@ -101,7 +101,7 @@ try {
 Write-Host "`n=== Test 1: GetCurrentStatus() ===" -ForegroundColor Cyan
 try {
     [DisplayUtilLive]::GetCurrentStatus()
-    Write-Host "`n✓ GetCurrentStatus() erfolgreich" -ForegroundColor Green
+    Write-Host "`n[OK] GetCurrentStatus() erfolgreich" -ForegroundColor Green
 } catch {
     Write-Error "GetCurrentStatus() fehlgeschlagen: $($_.Exception.Message)"
 }
@@ -120,7 +120,7 @@ if ($TestFrequency -gt 0 -and -not $DryRun) {
     try {
         Write-Host "`nÄndere Frequenz auf $TestFrequency Hz..." -ForegroundColor Cyan
         [DisplayUtilLive]::SetGPUMonitorsTo($TestFrequency)
-        Write-Host "`n✓ SetGPUMonitorsTo($TestFrequency Hz) erfolgreich" -ForegroundColor Green
+        Write-Host "`n[OK] SetGPUMonitorsTo($TestFrequency Hz) erfolgreich" -ForegroundColor Green
 
         # Status erneut anzeigen
         Write-Host "`n=== Status nach Änderung ===" -ForegroundColor Cyan
@@ -155,24 +155,24 @@ foreach ($testCase in $testCases) {
     try {
         Write-Host "  Teste Hz=$($testCase.Hz)... " -NoNewline -ForegroundColor Gray
         [DisplayUtilLive]::SetGPUMonitorsTo($testCase.Hz)
-        Write-Host "✗ FEHLER: Keine Exception geworfen!" -ForegroundColor Red
+        Write-Host "[ERROR] FEHLER: Keine Exception geworfen!" -ForegroundColor Red
     } catch {
-        Write-Host "✓ Exception erwartet und erhalten" -ForegroundColor Green
+        Write-Host "[OK] Exception erwartet und erhalten" -ForegroundColor Green
         Write-Verbose "  Exception: $($_.Exception.Message)"
     }
 }
 
 # Zusammenfassung
 Write-Host "`n=== Zusammenfassung ===" -ForegroundColor Cyan
-Write-Host "✓ DLL geladen und funktionsfähig" -ForegroundColor Green
-Write-Host "✓ GetCurrentStatus() funktioniert" -ForegroundColor Green
+Write-Host "[OK] DLL geladen und funktionsfähig" -ForegroundColor Green
+Write-Host "[OK] GetCurrentStatus() funktioniert" -ForegroundColor Green
 
 if ($TestFrequency -gt 0 -and -not $DryRun) {
-    Write-Host "✓ SetGPUMonitorsTo($TestFrequency Hz) getestet" -ForegroundColor Green
+    Write-Host "[OK] SetGPUMonitorsTo($TestFrequency Hz) getestet" -ForegroundColor Green
 } else {
     Write-Host "- SetGPUMonitorsTo() nicht getestet (verwenden Sie -TestFrequency)" -ForegroundColor Yellow
 }
 
-Write-Host "✓ Fehlerbehandlung funktioniert" -ForegroundColor Green
+Write-Host "[OK] Fehlerbehandlung funktioniert" -ForegroundColor Green
 
 Write-Host "`nDLL ist bereit für den Einsatz in baramundi!" -ForegroundColor Green

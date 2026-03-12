@@ -140,16 +140,16 @@ public static class DisplayUtilLive
                     bool success = SetMonitorRefreshRate(device.DeviceName, hz, out message);
                     if (success)
                     {
-                        results.Add(string.Format("✓ {0} ({1}): {2}", device.DeviceName, device.DeviceString, message));
+                        results.Add(string.Format("[OK] {0} ({1}): {2}", device.DeviceName, device.DeviceString, message));
                     }
                     else
                     {
-                        errors.Add(string.Format("✗ {0} ({1}): {2}", device.DeviceName, device.DeviceString, message));
+                        errors.Add(string.Format("[ERROR] {0} ({1}): {2}", device.DeviceName, device.DeviceString, message));
                     }
                 }
                 catch (Exception ex)
                 {
-                    errors.Add(string.Format("✗ {0}: Exception - {1}", device.DeviceName, ex.Message));
+                    errors.Add(string.Format("[ERROR] {0}: Exception - {1}", device.DeviceName, ex.Message));
                 }
             }
 
@@ -182,15 +182,18 @@ public static class DisplayUtilLive
     /// </summary>
     private static int FindClosestSupportedFrequency(string deviceName, int requestedHz, int currentWidth, int currentHeight, int currentBpp, out bool exactMatch)
     {
-        DEVMODE mode = new DEVMODE();
-        mode.dmSize = (short)Marshal.SizeOf(mode);
+        HashSet<int> supportedFrequencies = new HashSet<int>();
         int modeIndex = 0;
 
-        HashSet<int> supportedFrequencies = new HashSet<int>();
-
         // Enumerate all modes and collect frequencies that match current resolution/bpp
-        while (EnumDisplaySettings(deviceName, modeIndex, ref mode))
+        while (true)
         {
+            DEVMODE mode = new DEVMODE();
+            mode.dmSize = (short)Marshal.SizeOf(mode);
+
+            if (!EnumDisplaySettings(deviceName, modeIndex, ref mode))
+                break;
+
             if (mode.dmPelsWidth == currentWidth &&
                 mode.dmPelsHeight == currentHeight &&
                 mode.dmBitsPerPel == currentBpp)
@@ -331,14 +334,17 @@ public static class DisplayUtilLive
     public static void ListSupportedModes(string deviceName)
     {
         Console.WriteLine(string.Format("\nAvailable modes for {0}:", deviceName));
-        DEVMODE mode = new DEVMODE();
-        mode.dmSize = (short)Marshal.SizeOf(mode);
+        HashSet<string> uniqueModes = new HashSet<string>();
         int modeIndex = 0;
 
-        HashSet<string> uniqueModes = new HashSet<string>();
-
-        while (EnumDisplaySettings(deviceName, modeIndex, ref mode))
+        while (true)
         {
+            DEVMODE mode = new DEVMODE();
+            mode.dmSize = (short)Marshal.SizeOf(mode);
+
+            if (!EnumDisplaySettings(deviceName, modeIndex, ref mode))
+                break;
+
             string modeStr = string.Format("{0}x{1} @ {2} Hz ({3} bit)", mode.dmPelsWidth, mode.dmPelsHeight, mode.dmDisplayFrequency, mode.dmBitsPerPel);
             uniqueModes.Add(modeStr);
             modeIndex++;

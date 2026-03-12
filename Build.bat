@@ -52,7 +52,7 @@ copy /Y "bin\DisplayUtilLive.dll" "C:\Local\Files\"
 if errorlevel 1 (
     echo FEHLER beim Kopieren nach C:\Local\Files (Admin-Rechte erforderlich?)
 ) else (
-    echo ✓ DLL kopiert nach: C:\Local\Files\DisplayUtilLive.dll
+    echo [OK] DLL kopiert nach: C:\Local\Files\DisplayUtilLive.dll
 )
 
 echo.
