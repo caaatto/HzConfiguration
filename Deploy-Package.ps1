@@ -238,7 +238,7 @@ Write-Host ""
 Write-Host "Next steps:" -ForegroundColor Cyan
 Write-Host "  1. Review contents in: $OutputPath" -ForegroundColor Gray
 Write-Host "  2. Upload to baramundi server" -ForegroundColor Gray
-Write-Host "  3. Configure file deployment: Source -> C:\Local\" -ForegroundColor Gray
+Write-Host "  3. Configure file deployment: Source -> C:\Local\MonitorFix\deploy\" -ForegroundColor Gray
 Write-Host "  4. Create execution job (see README.md in package)" -ForegroundColor Gray
 Write-Host "  5. Test on a client machine" -ForegroundColor Gray
 Write-Host ""

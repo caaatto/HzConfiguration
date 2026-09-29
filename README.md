@@ -120,14 +120,17 @@ Sets all active monitors to the specified refresh rate.
 **Behavior:**
 - Validates mode support before changing
 - Keeps resolution and color depth unchanged
+- Uses the closest supported rate within ±3 Hz (e.g. 59 Hz for 60 Hz)
 - Throws exception if any monitor fails
+- Throws exception if no monitor was found (e.g. running as System in session 0)
+- Must run in the session of the logged-on user
 
 **Output:**
 ```
 === SetAllMonitorsTo(60 Hz) ===
 Successful changes: 2
-✓ \\.\DISPLAY1 (Intel(R) UHD Graphics): 60 Hz → 60 Hz already at 60 Hz
-✓ \\.\DISPLAY2 (DisplayLink USB Device): 75 Hz → 60 Hz successful
+[OK] \\.\DISPLAY1 (Intel(R) UHD Graphics): already at 60 Hz (no change needed)
+[OK] \\.\DISPLAY2 (DisplayLink USB Device): 75 Hz → 60 Hz successful
 ```
 
 ### GetCurrentStatus()
@@ -265,7 +268,9 @@ See `.\baramundi\README.md` for:
 ## Testing
 
 ```powershell
-# Test 1: View current status (no admin required)
+# Run as Administrator in the session of the logged-on user (not as System)
+
+# Test 1: View current status
 .\Test-DLL.ps1
 
 # Test 2: Change frequency (requires admin)
@@ -386,8 +391,8 @@ MIT License - Free to use and modify
 
 **Created by:** catto
 **Repository:** https://github.com/caaatto/HzConfiguration
-**Version:** 1.0
-**Last Updated:** 2025-01-27
+**Version:** 1.3
+**Last Updated:** 2026-09-29
 
 ---
 

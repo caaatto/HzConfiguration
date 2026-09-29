@@ -48,7 +48,7 @@
     <None Include="README.md" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <!-- Post-Build Event: Kopiere DLL nach bin\ und C:\Local\Files -->
+  <!-- Post-Build Event: Kopiere DLL nach bin\ und C:\Local\MonitorFix\deploy\Files -->
   <PropertyGroup>
     <PostBuildEvent>
       echo === Post-Build: Kopiere DLL ===

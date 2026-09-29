@@ -12,7 +12,7 @@
     All scripts are expected to be in C:\Local\MonitorFix\deploy\.
     DLL is expected at C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll.
 
-    Run as: System
+    Run as: logged-on user (step 2 needs the user's session; admin rights for steps 1 and 3 with DisplayLink)
     Timeout: 180s
 
 .PARAMETER Hz

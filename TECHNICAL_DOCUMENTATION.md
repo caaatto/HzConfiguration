@@ -1,7 +1,7 @@
 # MonitorFix - Technical Documentation
 
-**Version:** 1.2
-**Date:** 2026-03-12
+**Version:** 1.3
+**Date:** 2026-09-29
 **Author:** catto
 
 ---
@@ -116,6 +116,7 @@ struct DISPLAY_DEVICE
 **Usage:**
 - Determines all active displays
 - Filters for DISPLAY_DEVICE_ACTIVE (0x00000001)
+- Skips DISPLAY_DEVICE_MIRRORING_DRIVER (0x00000008), virtual displays of remote support tools
 - Provides device names for further API calls
 
 ---
@@ -229,17 +230,20 @@ public static void SetAllMonitorsTo(int hz)
 {
     1. EnumDisplayDevices() for all displays
        ↓
-    2. Filter: Only DISPLAY_DEVICE_ACTIVE
+    2. Filter: Only DISPLAY_DEVICE_ACTIVE, no mirroring drivers
        ↓
     3. For each display:
        ├─→ EnumDisplaySettings(ENUM_CURRENT_SETTINGS)
-       │   └─→ Read current resolution/color depth
+       │   ├─→ Read current resolution/color depth
+       │   └─→ Already at requested Hz → [OK], no change
        │
        ├─→ FindClosestSupportedFrequency()
        │   ├─ Check for exact match (e.g., 60 Hz)
        │   ├─ If not found: Search within ±3 Hz tolerance
        │   │   (e.g., 59 Hz when 60 Hz requested)
        │   └─ Return closest match or -1 if not found
+       │
+       ├─→ Closest match equals current rate → [OK], no change
        │
        ├─→ Prepare DEVMODE:
        │   ├─ dmPelsWidth = current (e.g. 1920)
@@ -257,6 +261,9 @@ public static void SetAllMonitorsTo(int hz)
            ├─ SUCCESSFUL → [OK] Display changed
            ├─ Note: CDS_UPDATEREGISTRY persists settings
            └─ Error → [ERROR] Exception
+       ↓
+    4. No display processed at all → Exception
+       (happens as SYSTEM in session 0, see 8.2)
 }
 ```
 
@@ -306,9 +313,11 @@ private static int FindClosestSupportedFrequency(
         if (!EnumDisplaySettings(deviceName, modeIndex, ref mode))
             break;
 
-        if (mode.dmPelsWidth == currentWidth &&
-            mode.dmPelsHeight == currentHeight &&
-            mode.dmBitsPerPel == currentBpp)
+        // Rotated (portrait) displays may list their modes in landscape orientation
+        bool sameSize = (mode.dmPelsWidth == currentWidth && mode.dmPelsHeight == currentHeight) ||
+                        (mode.dmPelsWidth == currentHeight && mode.dmPelsHeight == currentWidth);
+
+        if (sameSize && mode.dmBitsPerPel == currentBpp)
         {
             supportedFrequencies.Add(mode.dmDisplayFrequency);
         }
@@ -345,7 +354,8 @@ private static int FindClosestSupportedFrequency(
 - Requested: 60 Hz
 - Display supports: 59 Hz, 75 Hz, 120 Hz
 - Result: 59 Hz (within ±3 Hz tolerance)
-- User sees: "59 Hz → 59 Hz successful (requested 60 Hz, using closest match)"
+- Display currently at 75 Hz: "75 Hz → 59 Hz successful (requested 60 Hz, using closest match)"
+- Display already at 59 Hz: "already at 59 Hz (closest match for 60 Hz, no change needed)"
 
 #### DEVMODE Structure Reinitialization
 
@@ -491,6 +501,10 @@ foreach ($dev in $displaylink) {
 2. Reads registry value `DisplayFrequency`
 3. Applies new frequency
 
+**Safety:** If enabling fails after the device was disabled, the script retries enabling three times (2 s apart), so the monitors do not stay dark. If it still fails, the log says so and the device must be enabled in Device Manager or the dock reconnected.
+
+**Important:** Requires **Admin rights** (Disable/Enable-PnpDevice). Without them the script stops with a clear message before disabling anything.
+
 ---
 
 ### 3.3 Why Three Steps?
@@ -629,6 +643,10 @@ deploy/
 
 ### 6.1 Job Configuration
 
+**Which account?**
+- **Step 2 must run as the logged-on user.** Display settings belong to the user's session. A System job runs in session 0, which has no monitors, and step 2 then fails with "No active monitors found in session 0" (see 8.2).
+- **Steps 1 and 3 need admin rights** (HKLM write, device disable/enable). They only do something on clients with DisplayLink. Run them as System, or as the logged-on user if that user has admin rights.
+
 #### Option A: Three Separate Jobs
 
 **Job 1: Registry Setup**
@@ -636,7 +654,7 @@ deploy/
 Module: Execute
 Command: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
 Arguments: -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\01_registry.ps1" -Hz 60
-Run as: System
+Run as: System (admin rights needed)
 Timeout: 30s
 Error handling: Continue on error (Exit Code 0 if no DisplayLink)
 ```
@@ -646,9 +664,9 @@ Error handling: Continue on error (Exit Code 0 if no DisplayLink)
 Module: Execute
 Command: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
 Arguments: -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\02_gpu_change.ps1" -Hz 60
-Run as: System
+Run as: logged-on user (NOT System)
 Timeout: 120s
-Dependencies: Job 1 must succeed (or be skipped)
+Dependencies: none (runs even if job 1 failed)
 Error handling: Abort on error
 ```
 
@@ -657,7 +675,7 @@ Error handling: Abort on error
 Module: Execute
 Command: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
 Arguments: -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\03_displaylink_reload.ps1" -Hz 60
-Run as: System
+Run as: System (admin rights needed)
 Timeout: 60s
 Dependencies: Job 2 must succeed
 Error handling: Continue on error (Exit Code 0 if no DisplayLink)
@@ -672,10 +690,12 @@ Error handling: Continue on error (Exit Code 0 if no DisplayLink)
 Module: Execute
 Command: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
 Arguments: -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\Run-All.ps1" -Hz 60
-Run as: System
+Run as: logged-on user (with admin rights if DisplayLink is used)
 Timeout: 180s
 Error handling: Abort on error
 ```
+
+If step 1 fails (e.g. missing admin rights), Run-All still runs steps 2 and 3 and ends with exit code 1, so the refresh rate is changed anyway.
 
 **Advantages of Option B:**
 - Simpler configuration
@@ -711,7 +731,7 @@ Error handling: Abort on error
 | Code | Meaning |
 |------|-----------|
 | 0 | Success or no DisplayLink devices |
-| 1 | Registry access failed |
+| 1 | Registry access failed or no admin rights |
 
 **Script: 02_gpu_change.ps1**
 | Code | Meaning |
@@ -719,19 +739,19 @@ Error handling: Abort on error
 | 0 | Success |
 | 1 | DLL not found |
 | 2 | DLL could not be loaded |
-| 3 | Frequency change failed |
+| 3 | Frequency change failed, or no monitor found (System/session 0) |
 
 **Script: 03_displaylink_reload.ps1**
 | Code | Meaning |
 |------|-----------|
 | 0 | Success or no DisplayLink devices |
-| 1 | PnP reload failed |
+| 1 | PnP reload failed or no admin rights |
 
 **Script: Run-All.ps1**
 | Code | Meaning |
 |------|-----------|
 | 0 | All steps successful |
-| 1 | Step 1 failed |
+| 1 | Step 1 failed, steps 2 and 3 still ran and succeeded |
 | 2 | Step 2 failed |
 | 3 | Step 3 failed |
 
@@ -740,6 +760,8 @@ Error handling: Abort on error
 ### 6.4 Logging
 
 All scripts use `Write-Output` (not `Write-Host`), so baramundi can capture the output.
+
+`02_gpu_change.ps1` starts with `Running as: <account> (session <n>)`. Session 0 means the job runs as System and cannot reach the monitors.
 
 **Log Format:**
 ```
@@ -833,18 +855,25 @@ Set-ItemProperty: The requested registry access is not allowed.
 |--------|--------------|-------|
 | Load DLL | User | Add-Type loads assembly in process |
 | EnumDisplayDevices | User | Read access to display info |
-| ChangeDisplaySettingsEx | Administrator | System-wide change |
+| ChangeDisplaySettingsEx | Logged-on user (own session) | Display settings belong to the user's session, no admin needed |
 | Registry (HKLM) write | Administrator | HKLM write access |
 | PnP Device Disable/Enable | Administrator | Device management |
 
 ---
 
-### 8.2 SYSTEM vs. Administrator
+### 8.2 SYSTEM vs. Logged-on User
 
 **SYSTEM Account (baramundi):**
 - Usually has full registry access
 - Can manage PnP devices
+- **Cannot change refresh rates:** System jobs run in session 0 (session isolation since Windows Vista). Session 0 has no monitors, so `EnumDisplayDevices` finds nothing to change. `SetAllMonitorsTo` then throws "No active monitors found in session 0" and step 2 ends with exit code 3.
 - **Problem:** Some USB device registry keys may lack permissions
+
+**Logged-on user:**
+- Can change the refresh rate of the own monitors (step 2)
+- Needs admin rights for steps 1 and 3 (DisplayLink only)
+
+**Recommendation:** Step 2 always as logged-on user. Steps 1 and 3 as System, or as logged-on user with admin rights.
 
 **Workaround for baramundi Registry Problems:**
 
@@ -1069,7 +1098,30 @@ while (true)
 
 ---
 
-### 9.6 baramundi-Specific Problems
+### 9.6 "No active monitors found in session 0"
+
+**Cause:** Step 2 runs as System. System jobs run in session 0 without monitors (see 8.2). Older DLL versions reported "Successful changes: 0" and exit code 0 here, so nothing changed without any error.
+
+**Solution:** Run step 2 (or Run-All) as the logged-on user. The line `Running as: ... (session n)` at the start of step 2 shows the account and session.
+
+---
+
+### 9.7 Deployed DLL Is Outdated
+
+**Symptom:** Fixes described here have no effect, e.g. "NOT supported (no close match found)" although the display runs at 59 Hz.
+
+**Cause:** `deploy\Files\DisplayUtilLive.dll` is only updated by `Deploy-Package.ps1`. Until 2026-09-29 the package still contained the build from 2025-11-27.
+
+**Solution:** After every change to `DisplayUtilLive.cs`:
+```powershell
+.\Build-DLL.ps1
+.\Deploy-Package.ps1
+```
+Then upload `deploy\` to baramundi again.
+
+---
+
+### 9.8 baramundi-Specific Problems
 
 #### Problem: "Script not found"
 
@@ -1229,9 +1281,13 @@ if (-not $hasDisplayLink) {
 
 ```powershell
 # Before change: Save status
+# GetCurrentStatus() returns nothing and writes to Console.Out, so capture that
 Add-Type -Path "C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll"
-$status = [DisplayUtilLive]::GetCurrentStatus()
-$status | Out-File "C:\Local\MonitorFix\backup.txt"
+$originalOut = [Console]::Out
+$capture = New-Object System.IO.StringWriter
+[Console]::SetOut($capture)
+try { [DisplayUtilLive]::GetCurrentStatus() } finally { [Console]::SetOut($originalOut) }
+$capture.ToString() | Out-File "C:\Local\MonitorFix\backup.txt"
 
 # Perform change
 [DisplayUtilLive]::SetAllMonitorsTo(60)
@@ -1246,17 +1302,22 @@ $status | Out-File "C:\Local\MonitorFix\backup.txt"
 
 **baramundi Custom Inventory:**
 
+The DLL only offers `GetCurrentStatus()` for reading (its API structs are private). It writes to `Console.Out`, so capture that and pick the lines you need. Like step 2, this must run as the logged-on user, session 0 has no monitors.
+
 ```powershell
 # Read current monitor frequencies
 Add-Type -Path "C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll"
 
-$displays = [DisplayUtilLive]::GetDisplayDevices()
-foreach ($display in $displays) {
-    $devMode = New-Object DEVMODE
-    $devMode.dmSize = [System.Runtime.InteropServices.Marshal]::SizeOf($devMode)
+$originalOut = [Console]::Out
+$capture = New-Object System.IO.StringWriter
+[Console]::SetOut($capture)
+try { [DisplayUtilLive]::GetCurrentStatus() } finally { [Console]::SetOut($originalOut) }
 
-    if ([DisplayUtilLive]::EnumDisplaySettings($display.DeviceName, -1, [ref]$devMode)) {
-        Write-Output "$($display.DeviceName): $($devMode.dmDisplayFrequency) Hz"
+$device = $null
+foreach ($line in ($capture.ToString() -split "`r?`n")) {
+    if ($line -match '^(\\\\\.\\DISPLAY\d+):$') { $device = $Matches[1] }
+    elseif ($device -and $line -match 'Frequency: (\d+) Hz') {
+        Write-Output "${device}: $($Matches[1]) Hz"
     }
 }
 ```
@@ -1295,6 +1356,14 @@ foreach ($display in $displays) {
 
 | Version | Date | Changes |
 |---------|-------|------------|
+| 1.3 | 2026-09-29 | Rebuilt deploy package, hardened scripts |
+| | | - deploy\Files\DisplayUtilLive.dll was still the 1.0 build, now rebuilt |
+| | | - No monitor found (System/session 0) is an error instead of silent success |
+| | | - Mirroring drivers skipped, rotated displays matched |
+| | | - No change when the closest match is already set |
+| | | - Run-All continues with step 2 when step 1 fails |
+| | | - Admin check in steps 1 and 3, safe re-enable of DisplayLink devices |
+| | | - Jobs documented as "logged-on user" instead of System |
 | 1.2 | 2026-03-12 | Windows API compatibility updates |
 | | | - Fixed DEVMODE reinitialization for latest Windows updates |
 | | | - Added tolerance-based refresh rate matching (±3 Hz) |

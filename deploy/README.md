@@ -38,10 +38,10 @@ powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\01_regi
 
 **Exit Codes:**
 - `0` = Success (or no DisplayLink devices found)
-- `1` = Error setting registry
+- `1` = Error setting registry or no admin rights
 
 **baramundi Settings:**
-- **Run as:** logged-on user (with admin rights for steps 1 and 3)
+- **Run as:** System, or logged-on user with admin rights
 - **Timeout:** 30s
 - **Admin:** Yes
 
@@ -66,12 +66,12 @@ powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\02_gpu_
 - `0` = Success
 - `1` = DLL not found
 - `2` = DLL could not be loaded
-- `3` = Frequency change failed
+- `3` = Frequency change failed, or no monitor found (job runs as System in session 0)
 
 **baramundi Settings:**
-- **Run as:** logged-on user (with admin rights for steps 1 and 3)
+- **Run as:** logged-on user (NOT System: session 0 has no monitors)
 - **Timeout:** 120s
-- **Admin:** Yes
+- **Admin:** No
 
 ---
 
@@ -93,10 +93,12 @@ powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\03_disp
 
 **Exit Codes:**
 - `0` = Success (or no DisplayLink devices found)
-- `1` = Error reloading devices
+- `1` = Error reloading devices or no admin rights
+
+If enabling fails after the device was disabled, the script retries three times so the monitors do not stay dark.
 
 **baramundi Settings:**
-- **Run as:** logged-on user (with admin rights for steps 1 and 3)
+- **Run as:** System, or logged-on user with admin rights
 - **Timeout:** 60s
 - **Admin:** Yes
 
@@ -109,7 +111,7 @@ powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\03_disp
 **Job 1: DisplayLink Registry Setup**
 ```
 Command: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\01_registry.ps1" -Hz 60
-Run as: logged-on user
+Run as: System (or logged-on user with admin rights)
 Timeout: 30s
 Order: 1
 ```
@@ -117,16 +119,16 @@ Order: 1
 **Job 2: GPU Change (Main Job)**
 ```
 Command: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\02_gpu_change.ps1" -Hz 60
-Run as: logged-on user
+Run as: logged-on user (NOT System)
 Timeout: 120s
 Order: 2
-Dependency: Job 1 must be successful (Exit Code 0)
+Dependency: none (must run even if Job 1 failed)
 ```
 
 **Job 3: DisplayLink Reload**
 ```
 Command: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\03_displaylink_reload.ps1" -Hz 60
-Run as: logged-on user
+Run as: System (or logged-on user with admin rights)
 Timeout: 60s
 Order: 3
 Dependency: Job 2 must be successful (Exit Code 0)
@@ -134,44 +136,17 @@ Dependency: Job 2 must be successful (Exit Code 0)
 
 ### Option B: One Combined Job
 
-Create a wrapper script `Run-All.ps1`:
+The package already contains the wrapper script `Run-All.ps1`. It runs the three steps in order:
 
-```powershell
-param([int]$Hz = 60)
-
-Write-Output "=== Starting HzConfiguration (3 steps) ==="
-Write-Output ""
-
-# Step 1
-& "C:\Local\MonitorFix\deploy\01_registry.ps1" -Hz $Hz
-if ($LASTEXITCODE -ne 0) {
-    Write-Output "Step 1 failed!"
-    exit 1
-}
-
-# Step 2
-& "C:\Local\MonitorFix\deploy\02_gpu_change.ps1" -Hz $Hz
-if ($LASTEXITCODE -ne 0) {
-    Write-Output "Step 2 failed!"
-    exit 2
-}
-
-# Step 3
-& "C:\Local\MonitorFix\deploy\03_displaylink_reload.ps1" -Hz $Hz
-if ($LASTEXITCODE -ne 0) {
-    Write-Output "Step 3 failed!"
-    exit 3
-}
-
-Write-Output ""
-Write-Output "=== All steps completed successfully ==="
-exit 0
-```
+- Step 1 fails (e.g. no admin rights) → warning, steps 2 and 3 still run, exit code 1 at the end
+- Step 2 fails → stop, exit code 2
+- Step 3 fails → stop, exit code 3
+- Everything OK → exit code 0
 
 **Usage:**
 ```
 powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\Run-All.ps1" -Hz 60
-Run as: logged-on user
+Run as: logged-on user (with admin rights if DisplayLink is used)
 Timeout: 180s
 ```
 
