@@ -24,10 +24,9 @@
 .NOTES
     Exit Codes:
     0 = All steps completed successfully
-    1 = Step 1 (registry) failed
+    1 = Step 1 (registry) failed, steps 2 and 3 still ran and succeeded
     2 = Step 2 (gpu_change) failed
-    3 = Step 3 (displaylink_reload) failed
-#>
+    3 = Step 3 (displaylink_reload) failed#>
 
 param(
     [Parameter(Mandatory=$false)]
@@ -55,23 +54,26 @@ if (-not (Test-Path $step1Path)) {
     exit 1
 }
 
+# Step 1 only prepares DisplayLink. If it fails, the actual change in step 2
+# must still run, so a failure here is reported but does not stop the run.
+$step1Failed = $false
 try {
     & $step1Path -Hz $Hz
     $step1ExitCode = $LASTEXITCODE
 
     if ($step1ExitCode -ne 0) {
         Write-Output ""
-        Write-Output "[ERROR] Step 1 failed with exit code: $step1ExitCode"
-        exit 1
+        Write-Output "[WARNING] Step 1 failed with exit code: $step1ExitCode - continuing with step 2"
+        $step1Failed = $true
+    } else {
+        Write-Output ""
+        Write-Output "[OK] Step 1 completed successfully"
     }
-
-    Write-Output ""
-    Write-Output "[OK] Step 1 completed successfully"
     Write-Output ""
 
 } catch {
-    Write-Output "[ERROR] Step 1 exception: $($_.Exception.Message)"
-    exit 1
+    Write-Output "[WARNING] Step 1 exception: $($_.Exception.Message) - continuing with step 2"
+    $step1Failed = $true
 }
 
 # Step 2: GPU change
@@ -132,7 +134,17 @@ try {
     exit 3
 }
 
-# Success
+# Step 2 and 3 succeeded; step 1 only decides whether this counts as fully clean
+if ($step1Failed) {
+    Write-Output "======================================="
+    Write-Output "  DONE WITH WARNINGS (step 1 failed)"
+    Write-Output "======================================="
+    Write-Output ""
+    Write-Output "Monitors were changed, but the DisplayLink registry setup failed."
+    Write-Output ""
+    exit 1
+}
+
 Write-Output "======================================="
 Write-Output "  ALL STEPS COMPLETED SUCCESSFULLY"
 Write-Output "======================================="

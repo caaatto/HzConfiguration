@@ -8,7 +8,8 @@
     This is the main script that changes GPU settings.
 
     Portable: Uses relative paths to find DLL in multiple locations.
-    Run as: System
+    Run as: logged-on user (display settings belong to the user's session;
+    as SYSTEM in session 0 no monitors are found and the script fails with exit code 3)
     Timeout: 120s
 
 .PARAMETER Hz
@@ -40,6 +41,8 @@ $ErrorActionPreference = 'Stop'
 
 Write-Output "=== GPU Refresh Rate Change (Step 2/3) ==="
 Write-Output "Target frequency: $Hz Hz"
+Write-Output ("Running as: {0} (session {1})" -f [Security.Principal.WindowsIdentity]::GetCurrent().Name,
+                                               [System.Diagnostics.Process]::GetCurrentProcess().SessionId)
 Write-Output ""
 
 # DLL path (deployed by baramundi to C:\Local\MonitorFix\deploy\Files)

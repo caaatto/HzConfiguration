@@ -233,7 +233,7 @@ Job 2: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\
 Job 3: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\03_displaylink_reload.ps1" -Hz 60
 ```
 
-**All jobs:** Run as System, Admin: Yes
+**All jobs:** Run as the logged-on user. Step 2 must run in the user's session (as System there are no monitors in session 0). Steps 1 and 3 need admin rights, but only matter for DisplayLink.
 
 ### Scripts Included
 
@@ -299,8 +299,8 @@ ChangeDisplaySettingsEx failed
 ```
 
 **Solution:**
-- Run PowerShell as Administrator
-- Or: Run from baramundi with System account
+- Run in the session of the logged-on user (manually, or baramundi job "as logged-on user")
+- Not as System: System jobs run in session 0 without monitors ("No active monitors found in session 0")
 
 ### DisplayLink frequency stays unchanged
 

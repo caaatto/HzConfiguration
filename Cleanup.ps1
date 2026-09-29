@@ -67,7 +67,7 @@ try {
     Write-Host ""
     Write-Host "Lösungen:" -ForegroundColor Cyan
     Write-Host "  1. Schließe alle PowerShell-Fenster und führe Cleanup erneut aus" -ForegroundColor Gray
-    Write-Host "  2. Verwende: .\Cleanup.ps1 -ScheduleOnReboot" -ForegroundColor Gray
+    Write-Host "  2. Löschung beim Neustart planen: .\Cleanup-OnReboot.ps1" -ForegroundColor Gray
     Write-Host "  3. Starte den PC neu, dann manuell löschen" -ForegroundColor Gray
     exit 1
 }

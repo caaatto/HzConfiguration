@@ -74,8 +74,8 @@ try {
 
     $answer = Read-Host
     if ($answer -eq "j" -or $answer -eq "J" -or $answer -eq "y" -or $answer -eq "Y") {
-        Write-Host "Starte Neustart in 10 Sekunden..." -ForegroundColor Cyan
-        Start-Sleep -Seconds 2
+        Write-Host "Starte Neustart in 10 Sekunden... (Strg+C zum Abbrechen)" -ForegroundColor Cyan
+        Start-Sleep -Seconds 10
         Restart-Computer -Force
     } else {
         Write-Host "Neustart später manuell durchführen." -ForegroundColor Gray

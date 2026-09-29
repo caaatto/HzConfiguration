@@ -28,7 +28,7 @@ The scripts expect the DLL at: **`C:\Local\MonitorFix\deploy\Files\DisplayUtilLi
 - Must be executed BEFORE `02_gpu_change.ps1`
 - Harmless for systems without DisplayLink (Exit Code 0)
 
-**Execution:**
+**Usage:**
 ```powershell
 powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\01_registry.ps1" -Hz 60
 ```
@@ -41,7 +41,7 @@ powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\01_regi
 - `1` = Error setting registry
 
 **baramundi Settings:**
-- **Run as:** System
+- **Run as:** logged-on user (with admin rights for steps 1 and 3)
 - **Timeout:** 30s
 - **Admin:** Yes
 
@@ -54,7 +54,7 @@ powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\01_regi
 - Changes the refresh rate of all monitors (Intel, NVIDIA, AMD, DisplayLink)
 - **This is the main script**
 
-**Execution:**
+**Usage:**
 ```powershell
 powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\02_gpu_change.ps1" -Hz 60
 ```
@@ -69,7 +69,7 @@ powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\02_gpu_
 - `3` = Frequency change failed
 
 **baramundi Settings:**
-- **Run as:** System
+- **Run as:** logged-on user (with admin rights for steps 1 and 3)
 - **Timeout:** 120s
 - **Admin:** Yes
 
@@ -83,20 +83,20 @@ powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\02_gpu_
 - Must run AFTER `01_registry.ps1` and `02_gpu_change.ps1`
 - Harmless for systems without DisplayLink (Exit Code 0)
 
-**Execution:**
+**Usage:**
 ```powershell
 powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\03_displaylink_reload.ps1" -Hz 60
 ```
 
 **Parameters:**
-- `-Hz` : Target frequency in Hz (optional, for logging only)
+- `-Hz` : Target frequency in Hz (optional, only for logging)
 
 **Exit Codes:**
 - `0` = Success (or no DisplayLink devices found)
 - `1` = Error reloading devices
 
 **baramundi Settings:**
-- **Run as:** System
+- **Run as:** logged-on user (with admin rights for steps 1 and 3)
 - **Timeout:** 60s
 - **Admin:** Yes
 
@@ -109,7 +109,7 @@ powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\03_disp
 **Job 1: DisplayLink Registry Setup**
 ```
 Command: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\01_registry.ps1" -Hz 60
-Run as: System
+Run as: logged-on user
 Timeout: 30s
 Order: 1
 ```
@@ -117,7 +117,7 @@ Order: 1
 **Job 2: GPU Change (Main Job)**
 ```
 Command: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\02_gpu_change.ps1" -Hz 60
-Run as: System
+Run as: logged-on user
 Timeout: 120s
 Order: 2
 Dependency: Job 1 must be successful (Exit Code 0)
@@ -126,7 +126,7 @@ Dependency: Job 1 must be successful (Exit Code 0)
 **Job 3: DisplayLink Reload**
 ```
 Command: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\03_displaylink_reload.ps1" -Hz 60
-Run as: System
+Run as: logged-on user
 Timeout: 60s
 Order: 3
 Dependency: Job 2 must be successful (Exit Code 0)
@@ -168,10 +168,10 @@ Write-Output "=== All steps completed successfully ==="
 exit 0
 ```
 
-**Execution:**
+**Usage:**
 ```
 powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\Run-All.ps1" -Hz 60
-Run as: System
+Run as: logged-on user
 Timeout: 180s
 ```
 
@@ -183,7 +183,7 @@ Timeout: 180s
 
 **1. File-Deploy Module:**
 
-| Source | Destination |
+| Source | Target |
 |--------|------|
 | `bin\DisplayUtilLive.dll` | `C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll` |
 | `baramundi\01_registry.ps1` | `C:\Local\MonitorFix\deploy\01_registry.ps1` |
@@ -198,7 +198,7 @@ See "baramundi Configuration" above.
 
 ## Common Scenarios
 
-### Scenario 1: Set All Monitors to 60 Hz
+### Scenario 1: Set all monitors to 60 Hz
 
 ```
 Job: 01_registry.ps1 -Hz 60
@@ -206,7 +206,7 @@ Job: 02_gpu_change.ps1 -Hz 60
 Job: 03_displaylink_reload.ps1 -Hz 60
 ```
 
-### Scenario 2: Intel/NVIDIA/AMD Only (no DisplayLink)
+### Scenario 2: Only Intel/NVIDIA/AMD (no DisplayLink)
 
 ```
 Job: 02_gpu_change.ps1 -Hz 60
@@ -214,7 +214,7 @@ Job: 02_gpu_change.ps1 -Hz 60
 
 Scripts `01_registry.ps1` and `03_displaylink_reload.ps1` return Exit Code 0 if no DisplayLink devices are found, so you can always run all three jobs.
 
-### Scenario 3: Different Frequencies for Different Computer Groups
+### Scenario 3: Different frequencies for different computer groups
 
 Create multiple jobs with different `-Hz` parameters:
 
@@ -243,7 +243,7 @@ cd C:\Local
 .\03_displaylink_reload.ps1 -Hz 60
 ```
 
-3. Check result:
+3. Check results:
 ```powershell
 # Display current monitor configuration
 Add-Type -Path "C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll"
@@ -260,22 +260,32 @@ Add-Type -Path "C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll"
 - Check if baramundi copied the DLL to `C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll`
 - Execute on the client: `Test-Path "C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll"`
 
-### Problem: "Access denied" or "ChangeDisplaySettingsEx failed"
+### Problem: "No active monitors found in session 0"
+
+**Cause:** The job runs as System. System jobs run in session 0, which has no monitors, so display settings cannot be changed from there.
 
 **Solution:**
-- Scripts must be executed as **System** or **Administrator**
-- Check baramundi job settings: "Run as: System"
+- Run the job as the **logged-on user** in baramundi
+- The first lines of step 2 show the account and session it runs in
 
-### Problem: DisplayLink Remains at Old Frequency
+### Problem: "requires administrator rights" in step 1 or 3
+
+**Cause:** Writing HKLM (step 1) and disabling/enabling devices (step 3) need admin rights. Only relevant with DisplayLink.
+
+**Solution:**
+- Run steps 1 and 3 as System or with admin rights. Step 2 must stay on the logged-on user
+- `Run-All.ps1` continues with step 2 even if step 1 fails, so the refresh rate is still changed
+
+### Problem: DisplayLink remains at old frequency
 
 **Solution:**
 - Order is important: Registry → GPU → Reload
 - All three scripts must complete successfully (Exit Code 0)
 - For job dependencies in baramundi, ensure that jobs run sequentially
 
-### Problem: Exit Code Not Equal to 0
+### Problem: Exit Code not equal to 0
 
-**Check exit codes:**
+**Check Exit Codes:**
 
 | Exit Code | Script | Meaning |
 |-----------|--------|-----------|
@@ -285,7 +295,7 @@ Add-Type -Path "C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll"
 | 2 | 02 | DLL could not be loaded |
 | 3 | 02 | Frequency change failed |
 
-**Check logs:**
+**Check Logs:**
 - baramundi displays the script output in the job log
 - All scripts provide meaningful messages
 
@@ -309,9 +319,9 @@ Add-Type -Path "C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll"
 - Check baramundi job logs for script outputs
 - Test scripts manually on a client
 - Ensure all files exist under `C:\Local`
-- Check admin rights (Run as: System)
+- Check the account: step 2 as logged-on user, steps 1 and 3 with admin rights
 
-**More Information:**
+**Further Information:**
 - See main README.md for technical details
 - GitHub: https://github.com/caaatto/HzConfiguration
 

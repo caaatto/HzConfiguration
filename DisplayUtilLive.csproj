@@ -59,13 +59,13 @@
       copy /Y "$(TargetDir)$(TargetName).pdb" "$(ProjectDir)bin\" 2&gt;nul
       echo ✓ Kopiert nach: $(ProjectDir)bin\$(TargetFileName)
 
-      REM C:\Local\Files Verzeichnis (für portable Deployment)
-      if not exist "C:\Local\Files\" mkdir "C:\Local\Files\"
-      copy /Y "$(TargetPath)" "C:\Local\Files\"
+      REM C:\Local\MonitorFix\deploy\Files Verzeichnis (für portable Deployment)
+      if not exist "C:\Local\MonitorFix\deploy\Files\" mkdir "C:\Local\MonitorFix\deploy\Files\"
+      copy /Y "$(TargetPath)" "C:\Local\MonitorFix\deploy\Files\"
       if %errorlevel% equ 0 (
-        echo ✓ Kopiert nach: C:\Local\Files\$(TargetFileName)
+        echo ✓ Kopiert nach: C:\Local\MonitorFix\deploy\Files\$(TargetFileName)
       ) else (
-        echo ✗ FEHLER beim Kopieren nach C:\Local\Files (Admin-Rechte erforderlich?)
+        echo ✗ FEHLER beim Kopieren nach C:\Local\MonitorFix\deploy\Files (Admin-Rechte erforderlich?)
       )
 
       echo === Build erfolgreich ===

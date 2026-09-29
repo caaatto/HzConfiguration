@@ -44,15 +44,15 @@ echo.
 REM Dateigröße anzeigen (optional)
 for %%F in ("bin\DisplayUtilLive.dll") do echo Groesse: %%~zF Bytes
 
-REM Kopiere nach C:\Local\Files für portable Deployment
+REM Kopiere nach C:\Local\MonitorFix\deploy\Files für portable Deployment
 echo.
-echo Kopiere DLL nach C:\Local\Files...
-if not exist "C:\Local\Files\" mkdir "C:\Local\Files\"
-copy /Y "bin\DisplayUtilLive.dll" "C:\Local\Files\"
+echo Kopiere DLL nach C:\Local\MonitorFix\deploy\Files...
+if not exist "C:\Local\MonitorFix\deploy\Files\" mkdir "C:\Local\MonitorFix\deploy\Files\"
+copy /Y "bin\DisplayUtilLive.dll" "C:\Local\MonitorFix\deploy\Files\"
 if errorlevel 1 (
-    echo FEHLER beim Kopieren nach C:\Local\Files (Admin-Rechte erforderlich?)
+    echo FEHLER beim Kopieren nach C:\Local\MonitorFix\deploy\Files (Admin-Rechte erforderlich?)
 ) else (
-    echo [OK] DLL kopiert nach: C:\Local\Files\DisplayUtilLive.dll
+    echo [OK] DLL kopiert nach: C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll
 )
 
 echo.

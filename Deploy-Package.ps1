@@ -178,8 +178,8 @@ Option B - Single combined job:
   Job: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\Run-All.ps1" -Hz 60
 
 All jobs:
-  - Run as: System
-  - Admin: Yes
+  - Run as: logged-on user (step 2 needs the user's session, System = session 0 without monitors)
+  - Admin: needed for steps 1 and 3 (DisplayLink only)
   - ExecutionPolicy: Bypass
 
 ## Quick Test

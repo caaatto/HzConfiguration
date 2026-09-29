@@ -51,6 +51,14 @@ $displayLinkDevices | ForEach-Object {
 }
 Write-Output ""
 
+$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
+    [Security.Principal.WindowsBuiltInRole]::Administrator)
+if (-not $isAdmin) {
+    Write-Output "[ERROR] Writing HKLM requires administrator rights (running as: $([Security.Principal.WindowsIdentity]::GetCurrent().Name))"
+    Write-Output "Run this step as System/Administrator, or as the logged-on user with admin rights"
+    exit 1
+}
+
 $successCount = 0
 $errorCount = 0
 

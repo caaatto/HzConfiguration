@@ -16,14 +16,18 @@ Write-Host "  Forcing $refresh Hz on all monitors (LIVE)" -ForegroundColor Cyan
 Write-Host "==============================" -ForegroundColor Cyan
 
 # -----------------------------
-# 0. Load DLL from C:\Local\MonitorFix\deploy\Files
+# 0. Load DLL from C:\Local\MonitorFix\deploy\Files (fallback: bin\ next to this script)
 # -----------------------------
-$dllPath = "C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll"
+$dllCandidates = @(
+    "C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll",
+    (Join-Path $PSScriptRoot "bin\DisplayUtilLive.dll")
+)
+$dllPath = $dllCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
 
 # Check if DLL exists
-if (-not (Test-Path $dllPath)) {
+if (-not $dllPath) {
     Write-Host "ERROR: DLL not found!" -ForegroundColor Red
-    Write-Host "Expected: $dllPath" -ForegroundColor Yellow
+    Write-Host "Expected: $($dllCandidates -join ' or ')" -ForegroundColor Yellow
     Write-Host "`nPlease ensure that:" -ForegroundColor Yellow
     Write-Host "  1. The DLL was compiled (Build-DLL.ps1 or Build.bat)" -ForegroundColor Gray
     Write-Host "  2. The DLL was copied to C:\Local\MonitorFix\deploy\Files" -ForegroundColor Gray
@@ -97,19 +101,37 @@ if (!$displaylink -or $displaylink.Count -eq 0) {
 
         # Live reload: Disable / Enable the PnP device
         Write-Host "→ Reloading DisplayLink: $($dev.Name) ..."
+        $disabled = $false
         try {
             # Disable/Enable with PNPDeviceID. Requires admin rights.
             Disable-PnpDevice -InstanceId $pnp -Confirm:$false -ErrorAction Stop
+            $disabled = $true
             Start-Sleep -Milliseconds 1000
             Enable-PnpDevice  -InstanceId $pnp -Confirm:$false -ErrorAction Stop
+            $disabled = $false
             Start-Sleep -Milliseconds 800
             Write-Host "  Live reload successful." -ForegroundColor Green
         } catch {
             Write-Host "Error reloading (Disable/Enable) $($dev.Name): $($_.Exception.Message)" -ForegroundColor Red
             Write-Host "Note: Ensure that PowerShell is running as Administrator."
+        } finally {
+            # Never leave the monitors dark: retry enabling if the first attempt failed
+            for ($attempt = 1; $attempt -le 3 -and $disabled; $attempt++) {
+                Start-Sleep -Seconds 2
+                try {
+                    Enable-PnpDevice -InstanceId $pnp -Confirm:$false -ErrorAction Stop
+                    $disabled = $false
+                    Write-Host "  Device re-enabled (attempt $attempt)." -ForegroundColor Green
+                } catch {
+                    Write-Host "  Re-enable attempt $attempt failed: $($_.Exception.Message)" -ForegroundColor Red
+                }
+            }
+            if ($disabled) {
+                Write-Host "  Device is still DISABLED - enable it in Device Manager or reconnect the dock." -ForegroundColor Red
+            }
         }
     }
 }
 
 Write-Host "`nAll reachable monitors have been attempted to be set to $refresh Hz." -ForegroundColor Green
-Write-Host "If some monitors still show 70 Hz: restart the PC." -ForegroundColor Yellow
+Write-Host "If some monitors still show the old rate: restart the PC." -ForegroundColor Yellow

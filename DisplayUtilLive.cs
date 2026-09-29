@@ -106,6 +106,7 @@ public static class DisplayUtilLive
 
     private const int DISPLAY_DEVICE_ACTIVE = 0x00000001;
     private const int DISPLAY_DEVICE_ATTACHED_TO_DESKTOP = 0x00000001;
+    private const int DISPLAY_DEVICE_MIRRORING_DRIVER = 0x00000008;
 
     #endregion
 
@@ -130,9 +131,11 @@ public static class DisplayUtilLive
 
         while (EnumDisplayDevices(null, deviceIndex, ref device, 0))
         {
-            // Only active, attached displays
+            // Only active, attached displays. Mirroring drivers (remote support tools)
+            // are virtual and would only produce misleading errors.
             if ((device.StateFlags & DISPLAY_DEVICE_ACTIVE) != 0 &&
-                (device.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) != 0)
+                (device.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) != 0 &&
+                (device.StateFlags & DISPLAY_DEVICE_MIRRORING_DRIVER) == 0)
             {
                 try
                 {
@@ -175,6 +178,15 @@ public static class DisplayUtilLive
             }
             throw new InvalidOperationException(string.Format("{0} monitor(s) could not be changed.", errors.Count));
         }
+
+        // Without a single monitor nothing was changed. This happens when the code runs
+        // in session 0 (SYSTEM service without a desktop), so it must not count as success.
+        if (results.Count == 0)
+        {
+            throw new InvalidOperationException(string.Format(
+                "No active monitors found in session {0}. Display settings can only be changed from the session of the logged-on user.",
+                System.Diagnostics.Process.GetCurrentProcess().SessionId));
+        }
     }
 
     /// <summary>
@@ -194,9 +206,11 @@ public static class DisplayUtilLive
             if (!EnumDisplaySettings(deviceName, modeIndex, ref mode))
                 break;
 
-            if (mode.dmPelsWidth == currentWidth &&
-                mode.dmPelsHeight == currentHeight &&
-                mode.dmBitsPerPel == currentBpp)
+            // Rotated (portrait) displays may list their modes in landscape orientation
+            bool sameSize = (mode.dmPelsWidth == currentWidth && mode.dmPelsHeight == currentHeight) ||
+                            (mode.dmPelsWidth == currentHeight && mode.dmPelsHeight == currentWidth);
+
+            if (sameSize && mode.dmBitsPerPel == currentBpp)
             {
                 supportedFrequencies.Add(mode.dmDisplayFrequency);
             }
@@ -266,6 +280,13 @@ public static class DisplayUtilLive
         {
             message = string.Format("{0} Hz → {1} Hz NOT supported (no close match found)", originalFreq, hz);
             return false;
+        }
+
+        // Closest match is the current rate (e.g. 60 requested, monitor runs 59)
+        if (targetHz == originalFreq)
+        {
+            message = string.Format("already at {0} Hz (closest match for {1} Hz, no change needed)", originalFreq, hz);
+            return true;
         }
 
         // Use the found frequency (might be slightly different, e.g., 59 instead of 60)

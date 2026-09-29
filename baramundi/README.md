@@ -41,7 +41,7 @@ powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\01_regi
 - `1` = Error setting registry
 
 **baramundi Settings:**
-- **Run as:** System
+- **Run as:** logged-on user (with admin rights for steps 1 and 3)
 - **Timeout:** 30s
 - **Admin:** Yes
 
@@ -69,7 +69,7 @@ powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\02_gpu_
 - `3` = Frequency change failed
 
 **baramundi Settings:**
-- **Run as:** System
+- **Run as:** logged-on user (with admin rights for steps 1 and 3)
 - **Timeout:** 120s
 - **Admin:** Yes
 
@@ -96,7 +96,7 @@ powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\03_disp
 - `1` = Error reloading devices
 
 **baramundi Settings:**
-- **Run as:** System
+- **Run as:** logged-on user (with admin rights for steps 1 and 3)
 - **Timeout:** 60s
 - **Admin:** Yes
 
@@ -109,7 +109,7 @@ powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\03_disp
 **Job 1: DisplayLink Registry Setup**
 ```
 Command: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\01_registry.ps1" -Hz 60
-Run as: System
+Run as: logged-on user
 Timeout: 30s
 Order: 1
 ```
@@ -117,7 +117,7 @@ Order: 1
 **Job 2: GPU Change (Main Job)**
 ```
 Command: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\02_gpu_change.ps1" -Hz 60
-Run as: System
+Run as: logged-on user
 Timeout: 120s
 Order: 2
 Dependency: Job 1 must be successful (Exit Code 0)
@@ -126,7 +126,7 @@ Dependency: Job 1 must be successful (Exit Code 0)
 **Job 3: DisplayLink Reload**
 ```
 Command: powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\03_displaylink_reload.ps1" -Hz 60
-Run as: System
+Run as: logged-on user
 Timeout: 60s
 Order: 3
 Dependency: Job 2 must be successful (Exit Code 0)
@@ -171,7 +171,7 @@ exit 0
 **Usage:**
 ```
 powershell.exe -ExecutionPolicy Bypass -File "C:\Local\MonitorFix\deploy\Run-All.ps1" -Hz 60
-Run as: System
+Run as: logged-on user
 Timeout: 180s
 ```
 
@@ -260,11 +260,21 @@ Add-Type -Path "C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll"
 - Check if baramundi copied the DLL to `C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll`
 - Execute on the client: `Test-Path "C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll"`
 
-### Problem: "Access denied" or "ChangeDisplaySettingsEx failed"
+### Problem: "No active monitors found in session 0"
+
+**Cause:** The job runs as System. System jobs run in session 0, which has no monitors, so display settings cannot be changed from there.
 
 **Solution:**
-- Scripts must be executed as **System** or **Administrator**
-- Check baramundi job settings: "Run as: System"
+- Run the job as the **logged-on user** in baramundi
+- The first lines of step 2 show the account and session it runs in
+
+### Problem: "requires administrator rights" in step 1 or 3
+
+**Cause:** Writing HKLM (step 1) and disabling/enabling devices (step 3) need admin rights. Only relevant with DisplayLink.
+
+**Solution:**
+- Run steps 1 and 3 as System or with admin rights. Step 2 must stay on the logged-on user
+- `Run-All.ps1` continues with step 2 even if step 1 fails, so the refresh rate is still changed
 
 ### Problem: DisplayLink remains at old frequency
 
@@ -309,7 +319,7 @@ Add-Type -Path "C:\Local\MonitorFix\deploy\Files\DisplayUtilLive.dll"
 - Check baramundi job logs for script outputs
 - Test scripts manually on a client
 - Ensure all files exist under `C:\Local`
-- Check admin rights (Run as: System)
+- Check the account: step 2 as logged-on user, steps 1 and 3 with admin rights
 
 **Further Information:**
 - See main README.md for technical details

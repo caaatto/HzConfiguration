@@ -52,6 +52,14 @@ $displayLinkDevices | ForEach-Object {
 }
 Write-Output ""
 
+$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
+    [Security.Principal.WindowsBuiltInRole]::Administrator)
+if (-not $isAdmin) {
+    Write-Output "[ERROR] Disabling/enabling devices requires administrator rights (running as: $([Security.Principal.WindowsIdentity]::GetCurrent().Name))"
+    Write-Output "Run this step as System/Administrator, or as the logged-on user with admin rights"
+    exit 1
+}
+
 $successCount = 0
 $errorCount = 0
 
@@ -62,15 +70,18 @@ foreach ($device in $displayLinkDevices) {
     Write-Output "Reloading: $deviceName"
     Write-Output "  PNP ID: $pnpId"
 
+    $disabled = $false
     try {
         # Disable device
         Write-Output "  Disabling..."
         Disable-PnpDevice -InstanceId $pnpId -Confirm:$false -ErrorAction Stop
+        $disabled = $true
         Start-Sleep -Milliseconds 1000
 
         # Enable device
         Write-Output "  Enabling..."
         Enable-PnpDevice -InstanceId $pnpId -Confirm:$false -ErrorAction Stop
+        $disabled = $false
         Start-Sleep -Milliseconds 800
 
         Write-Output "  [OK] Device reloaded successfully"
@@ -79,6 +90,23 @@ foreach ($device in $displayLinkDevices) {
     } catch {
         Write-Output "  [ERROR] Failed to reload device: $($_.Exception.Message)"
         $errorCount++
+    } finally {
+        # Never leave the monitors dark: retry enabling if the first attempt failed
+        if ($disabled) {
+            for ($attempt = 1; $attempt -le 3 -and $disabled; $attempt++) {
+                Start-Sleep -Seconds 2
+                try {
+                    Enable-PnpDevice -InstanceId $pnpId -Confirm:$false -ErrorAction Stop
+                    $disabled = $false
+                    Write-Output "  [OK] Device re-enabled (attempt $attempt)"
+                } catch {
+                    Write-Output "  [ERROR] Re-enable attempt $attempt failed: $($_.Exception.Message)"
+                }
+            }
+            if ($disabled) {
+                Write-Output "  [ERROR] Device is still DISABLED - enable it in Device Manager or reconnect the dock"
+            }
+        }
     }
 
     Write-Output ""
