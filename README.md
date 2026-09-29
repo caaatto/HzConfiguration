@@ -391,7 +391,7 @@ MIT License - Free to use and modify
 
 **Created by:** catto
 **Repository:** https://github.com/caaatto/HzConfiguration
-**Version:** 1.3
+**Version:** 1.6
 **Last Updated:** 2026-09-29
 
 ---

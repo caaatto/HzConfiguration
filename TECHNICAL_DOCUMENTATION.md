@@ -1,6 +1,6 @@
 # MonitorFix - Technical Documentation
 
-**Version:** 1.3
+**Version:** 1.6
 **Date:** 2026-09-29
 **Author:** catto
 
@@ -1354,9 +1354,11 @@ foreach ($line in ($capture.ToString() -split "`r?`n")) {
 
 ### B. Version History
 
+Note: The Git tag `v1.5` marks version 1.1 (2025-12-15). Version 1.6 continues the tag numbering, so tag and documentation match again.
+
 | Version | Date | Changes |
 |---------|-------|------------|
-| 1.3 | 2026-09-29 | Rebuilt deploy package, hardened scripts |
+| 1.6 | 2026-09-29 | Rebuilt deploy package, hardened scripts |
 | | | - deploy\Files\DisplayUtilLive.dll was still the 1.0 build, now rebuilt |
 | | | - No monitor found (System/session 0) is an error instead of silent success |
 | | | - Mirroring drivers skipped, rotated displays matched |
